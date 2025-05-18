@@ -13,6 +13,7 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("error before");
 
     await axios
       .post(

@@ -30,7 +30,8 @@ export const getAllOrdersOfShop = (shopId) => async (dispatch) => {
     });
 
     const { data } = await axios.get(
-        ""
+      `http://localhost:5000/order/get-seller-all-orders/${shopId}`
+
     );
 
     dispatch({
@@ -52,9 +53,11 @@ export const getAllOrdersOfAdmin = () => async (dispatch) => {
       type: "adminAllOrdersRequest",
     });
 
-    const { data } = await axios.get("", {
+    const { data } = await axios.get("http://localhost:5000/order/admin-all-orders", {
       withCredentials: true,
     });
+
+    console.log(data);
 
     dispatch({
       type: "adminAllOrdersSuccess",

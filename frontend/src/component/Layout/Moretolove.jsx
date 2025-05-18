@@ -34,7 +34,7 @@ function Moretolove() {
       <div className="mx-5 md:mx-16 my-10">
         <div className="flex flex-wrap mx-auto w-full">
         {data.length === 0 ? (
-          <div className="py-16 text-center text-[50px]">Product loading</div>
+          <div className="py-16 text-center text-[50px]">No Product </div>
         ) : (
           data.map((item) => <Productcard key={item._id} item={item} />
         

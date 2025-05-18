@@ -9,38 +9,39 @@ const initialState = {
 // Async helper to update AsyncStorage
 const updateWishStorage = async (wish) => {
   try {
-    await AsyncStorage.setItem("WishItems", JSON.stringify(wish));
+    // await AsyncStorage.setItem("WishItems", JSON.stringify(wish));
+    const flattenedWish = wish.flat(); // ✅ remove one level of nesting
+    await AsyncStorage.setItem("WishItems", JSON.stringify(flattenedWish));
   } catch (error) {
     console.error("Failed to update Wish AsyncStorage", error);
   }
 };
 
 export const Wish = createReducer(initialState, (builder) => {
-  builder
-    .addCase("addToWish", (state, action) => {
-      const item = action.payload;
-      const isItemExist = state.wish.find((i) => i._id === item._id);
+  builder.addCase("addToWish", (state, action) => {
+    const item = Array.isArray(action.payload) ? action.payload[0] : action.payload;
 
-      if (isItemExist) {
-        state.wish = state.wish.map((i) =>
-          i._id === isItemExist._id ? item : i
-        );
-      } else {
-        state.wish.push(item);
-      }
+    const isItemExist = state.wish.find((i) => i._id === item._id);
 
-      // Persist changes
-      updateWishStorage(state.wish);
-    })
+    if (isItemExist) {
+      state.wish = state.wish.map((i) =>
+        i._id === isItemExist._id ? item : i
+      );
+    } else {
+      state.wish = [...state.wish, item]; // ✅ Always keeps it flat
+    }
+    const newWish = [...state.wish]; // Force flatten and detachment
+    updateWishStorage(newWish);
+  });
 
-    .addCase("removeFromWish", (state, action) => {
-      state.wish = state.wish.filter((i) => i._id !== action.payload);
+  builder.addCase("removeFromWish", (state, action) => {
+    state.wish = state.wish.filter((i) => i._id !== action.payload);
+    updateWishStorage([...state.wish]);
+  });
 
-      // Persist changes
-      updateWishStorage(state.wish);
-    })
-
-    .addCase("setWishFromStorage", (state, action) => {
-      state.wish = action.payload;
-    });
+  builder.addCase("setWishFromStorage", (state, action) => {
+    state.wish = Array.isArray(action.payload) ? action.payload : [];
+  });
 });
+
+

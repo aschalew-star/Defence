@@ -9,28 +9,33 @@ import {
   LoginPage,
   Signuppage,
   CartPage,
-  Checkoutpage,
+  Checkoutpage,Orders,
 Daynamicproduct,
 Product,Faq,
   Wishpage,Payments,Event,Seccess
 } from "./Routs/Route";
 
-import { ShopCreatee, ProductCreate ,ShopLogin,Dashbord,
-AllOrderss,Shopallprodcts,CreateEvant
+import { ShopCreatee, ProductCreate ,ShopLogin,Dashbord,Orderdtal,
+Adminallorder,
+Alluser,
+Allseller,
+Allproductees,
+AdminDashboard,
+AllOrderss,Shopallprodcts,CreateEvant,
 } from "./Routs/Shop";
 import Store from "./redux/Store/Store";
 import { fechAllProducts } from "./redux/Action/productAction";
 import {loadSeller, loadUser } from "./redux/Action/user"
 import { useSelector } from "react-redux";
+import Usermessage from "./page/Usermessage";
+import Mesage from "../src/page/shop/Mssage";
 
 function App() {
   useEffect(() => {
     Store.dispatch(fechAllProducts());
       Store.dispatch(loadUser());
       Store.dispatch(loadSeller());
-      // Store.dispatch(getAllProducts());
-      // Store.dispatch(getAllEvents());
-      // getStripeApikey();
+    
   }, []);
     const { user } = useSelector((state) => state.user);
   
@@ -53,8 +58,11 @@ function App() {
         <Route path="/" element={<Home />}/>
         <Route path="/LOgin" element={<LoginPage />} />
         <Route path="/Signup" element={<Signuppage />} />
+        <Route path="/inbox" element={<Usermessage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/faq" element={<Faq />} />
+        <Route path="/Order" element={<Orders />} />
+        <Route path="/Message" element={<Mesage/>} />
 
         <Route path="/checkout" element={<Checkoutpage />} />
         <Route path="/Event" element={<Event />} />
@@ -64,11 +72,23 @@ function App() {
         <Route path="/shop-create" element={<ShopCreatee />} />
         <Route path="/create-product" element={<ProductCreate />} />
         <Route path="/ShopLogin" element={<ShopLogin />} />
-        <Route path="/Dashbord" element={<Dashbord />} />
+        <Route path="/Dashboard" element={<Dashbord />} />
         <Route path="/AllOrders" element={<AllOrderss />} />
         <Route path="/Shopallprodcts" element={<Shopallprodcts />} />
         <Route path="/create-event" element={<CreateEvant/>} />
         <Route path="/product/category/:category" element={<Daynamicproduct/>} />
+        <Route path="/AdminDashboard" element={<AdminDashboard />} />
+        <Route path="/AdminAllproduct" element={<Allproductees />} />
+        <Route path="/Adminallorder" element={<Adminallorder />} />
+        <Route path="/Allseller" element={<Allseller />} />
+        <Route path="/Alluser" element={<Alluser />} />
+
+        <Route
+          path="/order/:id"
+          element={
+              <Orderdtal />
+          }
+        />
 
         <Route path="/Seccess/:tx_ref" element={<Seccess/>} />
 

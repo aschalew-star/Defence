@@ -34,7 +34,7 @@ function ShopCreate() {
       .then((res) => {
         toast.success("seccessfull Create Shop");
         // window.location.reload()
-        navigater("/Dashbord")
+        // navigater("/Dashboard")
         setName("");
         setEmail("");
         setPassword("");

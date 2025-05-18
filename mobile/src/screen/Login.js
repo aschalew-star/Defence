@@ -1,6 +1,6 @@
 import React, { use, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
-
+import Toast from "react-native-toast-message";
 import {
   View,
   Text,
@@ -14,41 +14,44 @@ import {
   SafeAreaProvider,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import Feather from '@expo/vector-icons/Feather';
+import Feather from "@expo/vector-icons/Feather";
+import axios from "axios";
+import * as Updates from 'expo-updates';
 
 function LoginScreen() {
   const insets = useSafeAreaInsets(); // Get top/bottom safe area values
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [open,setopen]=useState(false)
+  const [open, setopen] = useState(false);
 
   const navigation = useNavigation(); // Move this outside the function so it's always available
-  
-  const handleSubmit = async () => {}
-  //   try {
-  //     const res = await axios.post(
-  //       "http://localhost:5000/user/login",
-  //       {
-  //         email,
-  //         password,
-  //       },
-  //       { withCredentials: true }
-  //     );
-  
-  //     if (res.data.success) {
-  //       console.log("Login Success ✅");
-  
-  //       // Navigate to your home screen
-  //       navigation.navigate("Home"); // change "Home" to your actual screen name
-  //     }
-  //   } catch (err) {
-  //     console.log("Login failed ❌", err);
-  //   }
-  // };
-  
 
-     
+  const handleSubmit = async () => {
+    try {
+      const res = await axios.post(
+        "http://localhost:5000/user/login",
+        {
+          email,
+          password,
+        },
+        { withCredentials: true }
+      );
+
+      if (res.data.success) {
+        console.log("Login Success ✅");
+        Toast.show({
+          type: "success",
+          text1: "Login successful",
+        });
+        
+        await Updates.reloadAsync();
+        navigation.navigate("Main");
+      }
+    } catch (err) {
+      console.log("Login failed ❌", err);
+    }
+  };
 
   return (
     <View
@@ -91,19 +94,32 @@ function LoginScreen() {
                 <TextInput
                   className="border border-gray-300 rounded-md p-1 px-4"
                   value={password}
-                  secureTextEntry={!open} 
+                  secureTextEntry={!open}
                   onChangeText={(text) => setPassword(text)}
                   placeholder="enter your password"
                 />
-                {open?
-                <Feather name="eye" size={24} color="black" className="absolute top-7 right-3 " onPress={()=>setopen(!open)}/>:
-                <Feather name="eye-off" size={24} color="black" className="absolute top-7 right-3 " onPress={()=>setopen(!open)} />
-}
+                {open ? (
+                  <Feather
+                    name="eye"
+                    size={24}
+                    color="black"
+                    className="absolute top-7 right-3 "
+                    onPress={() => setopen(!open)}
+                  />
+                ) : (
+                  <Feather
+                    name="eye-off"
+                    size={24}
+                    color="black"
+                    className="absolute top-7 right-3 "
+                    onPress={() => setopen(!open)}
+                  />
+                )}
               </View>
 
               <Pressable
                 onPress={handleSubmit}
-                className="bg-blue-600 h-11 flex justify-center items-center mx-10 rounded-md mb-7" 
+                className="bg-blue-600 h-11 flex justify-center items-center mx-10 rounded-md mb-7"
               >
                 <Text
                   style={{

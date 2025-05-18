@@ -1,6 +1,7 @@
 import React from "react";
 import Navbar from "../../component/Layout/Navbar";
 import DashboardSideBar from "../../component/shop/DashboardSideBar";
+import CreateEvent from "../../component/shop/Eventcreate"
 
 function Dashbord() {
   return (
@@ -11,7 +12,7 @@ function Dashbord() {
               <DashboardSideBar active={6} />
             </div>
             <div className="w-full justify-center pt-10 flex">
-                {/* <CreateProduct/> */}
+                <CreateEvent/>
             </div>
           </div>
     </div>

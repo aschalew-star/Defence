@@ -10,7 +10,7 @@ export const fechAllProducts = () => async (dispatch) => {
       "http://localhost:5000/product/get-all-products")
 
     dispatch({ type: "getAllProductSuccess", payload : data.products });
-    console.log(data.products);
+    // console.log("REDUX",data.products);
   } catch (error) {
     dispatch({ type: "getAllProductFail", payload : error.message });
   }

@@ -82,6 +82,7 @@ router.delete(
       const product = await Product.findById(req.params.id);
 
       if (!product) {
+        console.log(product);
         return next(new ErrorHandler("Product is not found with this id", 404));
       }    
 
@@ -91,7 +92,8 @@ router.delete(
         );
       }
     
-      await product.remove();
+      // await product.remove();
+      await Product.findByIdAndDelete(req.params.id);
 
       res.status(201).json({
         success: true,
@@ -180,8 +182,8 @@ router.put(
 // all products --- for admin
 router.get(
   "/admin-all-products",
-  isAuthenticated,
-  isAdmin("Admin"),
+  // isAuthenticated,
+  // isAdmin("Admin"),
   catchAsyncErrors(async (req, res, next) => {
     try {
       const products = await Product.find().sort({

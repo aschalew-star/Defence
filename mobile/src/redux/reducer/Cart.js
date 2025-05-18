@@ -1,6 +1,7 @@
 import { createReducer } from "@reduxjs/toolkit";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+
 // Load initial state async (but this is a fallback default — actual loading should be done outside)
 const initialState = {
   cart: [],
@@ -44,3 +45,9 @@ export const Cart = createReducer(initialState, (builder) => {
       state.cart = action.payload;
     });
 });
+
+
+
+
+
+

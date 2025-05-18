@@ -11,11 +11,13 @@ import Event from '../page/Event';
 import Seccess from '../page/Seccess';
 import Daynamicproduct from '../page/Daynamicproduct';
 import Faq from '../page/Faq';
+import Orders from '../page/Orders';
 
 export  {
 
 Faq,
 Home,LoginPage,Signuppage,CartPage,Checkoutpage,Product,Wishpage,Payments,Event,Seccess,
-Daynamicproduct
+Orders,
+Daynamicproduct,
 
 };

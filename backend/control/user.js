@@ -352,8 +352,8 @@ Router.get(
 // all users --- for admin
 Router.get(
   "/admin-all-users",
-  isAuthenticated,
-  isAdmin("Admin"),
+  // isAuthenticated,
+  // isAdmin("Admin"),
   asynfun(async (req, res, next) => {
     try {
       const users = await User.find().sort({
@@ -372,8 +372,8 @@ Router.get(
 // delete users --- admin
 Router.delete(
   "/delete-user/:id",
-  isAuthenticated,
-  isAdmin("Admin"),
+  // isAuthenticated,
+  // isAdmin("Admin"),
   asynfun(async (req, res, next) => {
     try {
       const user = await User.findById(req.params.id);
@@ -384,9 +384,9 @@ Router.delete(
         );
       }
 
-      const imageId = user.avatar.public_id;
+      const imageId = user?.avatar?.public_id;
 
-      await cloudinary.v2.uploader.destroy(imageId);
+      // await cloudinary.v2.uploader.destroy(imageId);
 
       await User.findByIdAndDelete(req.params.id);
 

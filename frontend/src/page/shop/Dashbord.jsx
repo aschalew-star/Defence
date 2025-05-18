@@ -11,7 +11,7 @@ function Dashbord() {
         <div className="w-[80px] 800px:w-[330px]">
           <DashboardSideBar active={1} className="" />
         </div>
-        <div className=" ml-[80px] 800px:ml-[330px]">
+        <div className=" ml-[10px] 800px:ml-[100px]">
           <Dashboard />
         </div>
       </div>

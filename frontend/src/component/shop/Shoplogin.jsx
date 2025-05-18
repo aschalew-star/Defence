@@ -14,6 +14,13 @@ function Shoplogin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Admin login bypass
+    if (email === "Admin@gmail.com" && password === "1234") {
+      toast.success("Admin login success!");
+      return navigate("/AdminDashboard");
+    }
+
+
     await axios
       .post(
         "http://localhost:5000/shop/login",
@@ -27,7 +34,7 @@ function Shoplogin() {
         toast.success("Login Success!");
         console.log(res.data.success);
         console.log();
-        navigate("/Dashbord");
+        navigate("/Dashboard");
         window.location.reload(true); 
       })
       .catch((err) => {

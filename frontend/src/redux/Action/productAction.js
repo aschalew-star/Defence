@@ -10,7 +10,7 @@ export const fechAllProducts = () => async (dispatch) => {
       "http://localhost:5000/product/get-all-products")
 
     dispatch({ type: "getAllProductSuccess", payload : data.products });
-    console.log(data.products);
+    // console.log(data.products);
   } catch (error) {
     dispatch({ type: "getAllProductFail", payload : error.message });
   }
@@ -72,12 +72,16 @@ export const getAllProductsShop = (id) => async (dispatch) => {
     });
 
     const { data } = await axios.get(
-      "ghgj",
-    );
+      `http://localhost:5000/product/get-all-products-shop/${id}`);
     dispatch({
       type: "getAllProductsShopSuccess",
       payload: data.products,
     });
+    
+
+    console.log(data);
+    
+
   } catch (error) {
     dispatch({
       type: "getAllProductsShopFailed",
@@ -94,16 +98,19 @@ export const deleteProduct = (id) => async (dispatch) => {
     });
 
     const { data } = await axios.delete(
-      "/product/delete-shop-product",
+      `http://localhost:5000/product/delete-shop-product/${id}`,
+
+
       {
         withCredentials: true,
       }
     );
-
     dispatch({
       type: "deleteProductSuccess",
       payload: data.message,
     });
+
+    console.log(data.message);
   } catch (error) {
     dispatch({
       type: "deleteProductFailed",

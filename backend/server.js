@@ -7,7 +7,10 @@ const order=require("./control/order")
 const cookie = require("cookie-parser");
 const product = require("./control/product");
 const payment = require("./control/payment");
+const event = require("./control/Event");
 const cloudinary=require("cloudinary")
+const message=require("./control/Message")
+const conversation=require("./control/Conversation")
 const app = express();
 const port = 5000;
 
@@ -15,7 +18,8 @@ app.use(express.json({ extended: true, limit: "50mb" }));
 
 app.use(
   cors({
-    origin: ["http://localhost:3000"],
+    origin: ["http://localhost:3000","http://localhost:8081","https://297c-213-55-102-49.ngrok-free.app"],
+    // origin: "*",
     credentials: true,
   })
 );
@@ -31,7 +35,10 @@ cloudinary.config({
 
 
 app.use("/order",order)
+app.use("/event",order)
 app.use("/payment", payment);
+app.use("/message", message);
+app.use("/conversation", conversation);
 app.use("/product", product);
 app.use("/user", router);
 app.use("/shop", shop);

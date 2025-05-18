@@ -11,7 +11,7 @@ function Shopallprodcts() {
             <div className="w-[80px] 800px:w-[330px]">
               <DashboardSideBar active={3} />
             </div>
-            <div className="w-full justify-center flex">
+            <div className="w-full justify-center flex z-50">
                 <Shopallproduct />
             </div>
           </div>

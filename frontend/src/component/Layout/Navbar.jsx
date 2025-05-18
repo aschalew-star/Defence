@@ -103,7 +103,12 @@ function Navbar({ active, show }) {
         </div>
 
         {/* Profile & Cart */}
-        <div className="flex   -ml-1 gap-6 mr-2  ">
+        <div className="flex    gap-6 mr-2  ">
+        <Link to={"/Order"}>
+            <div className="flex items-center text-[17px] hover:text-red-600  mt-4">
+              Orders
+            </div>
+          </Link>
           <Link to={"/login"}>
             <div className="flex items-center   mt-2">
               <CgProfile className="text-2xl " />

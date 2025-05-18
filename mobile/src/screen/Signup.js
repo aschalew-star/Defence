@@ -1,6 +1,6 @@
-import React, { use, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
-
+import Toast from 'react-native-toast-message';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import Feather from '@expo/vector-icons/Feather';
+import axios from "axios";
 
 function Signupscrren() {
   const insets = useSafeAreaInsets(); // Get top/bottom safe area values
@@ -27,36 +28,32 @@ function Signupscrren() {
   const [password, setPassword] = useState("");
   const [open,setopen]=useState(false)
 
-  //       setAvatar(reader.result);
-  //     }
-  //   };
+ 
 
-  //   reader.readAsDataURL(e.target.files[0]);
-  // };
+  const handleSubmit = async () => {
 
-  const handleSubmit = async (e) => {}
-  //   e.preventDefault();
-
-  //   axios
-  //     .post("http://localhost:5000/user/signup", { name, email, password, avatar })
-  //     .then((res) => {
-  //       // toast.success("Register seccessfull");
-  //       setname("");
-  //       setEmail("");
-  //       setPassword("");
-  //       setAvatar(null);
-  //       console.log(res.data.success);
-  //       console.log("Register seccessfull");
+    axios
+      .post("http://localhost:5000/user/signup", { name, email, password})
+      .then((res) => {
+         Toast.show({
+        type: 'success',
+        text1: 'Registration successful',
+      });
+        setname("");
+        setEmail("");
+        setPassword("");
+        console.log(res.data.success);
+        console.log("Register seccessfull");
           
       
-  //     })
-  //     .catch((error) => {
-  //       console.log(error);
-  //       toast.success("Register Error");
-  //       console.log(error.response.data.message);
+      })
+      .catch((error) => {
+        console.log(error);
+        // toast.success("Register Error");
+        console.log(error.response.data.message);
 
-  //     });
-  // };
+      });
+  };
   
 
   return (
@@ -86,7 +83,7 @@ function Signupscrren() {
           <View className="bg-white m-5 rounded-md shadow-slate-600">
             <View className="flex mt-11 mx-8 ">
             <View className="mb-7">
-                <Text>Email</Text>
+                <Text>Name</Text>
                 <TextInput
                   className="border border-gray-300 rounded-md p-1 px-4"
                   value={name}

@@ -42,7 +42,7 @@ function SSeccess() {
         const response = await axios.post("http://localhost:5000/payment/verify", { tx_ref });
 
         if (response.data.status === "success") {
-          toast.success("✅ Payment successful! Order placed.");
+          // toast.success("✅ Payment successful! Order placed.");
 
           const finalOrder = {
             ...orderData,
@@ -73,15 +73,15 @@ function SSeccess() {
               window.location.reload();
             } else {
               console.error("❌ Order creation failed:", orderResponse.data);
-              toast.error("❌ Failed to store order in database.");
+              // toast.error("❌ Failed to store order in database.");
             }
           } catch (orderError) {
             console.error("❌ Error storing order:", orderError);
-            toast.error("❌ Error storing order. Please try again.");
+            // toast.error("❌ Error storing order. Please try again.");
           }
         } else {
           console.error("❌ Payment verification failed:", response.data);
-          toast.error("❌ Payment verification failed!");
+          // toast.error("❌ Payment verification failed!");
         }
       } catch (error) {
         console.error("❌ Error in payment verification:", error);
