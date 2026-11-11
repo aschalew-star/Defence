@@ -16,6 +16,7 @@ import {
   BsTrash,
   BsPlusLg,
   BsCheck2,
+  BsScissors,
 } from "react-icons/bs";
 import { FiMail, FiPhone, FiUser } from "react-icons/fi";
 
@@ -24,13 +25,24 @@ function Profile() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState(1); // 1: Profile info, 2: Addresses, 3: Security
+  const [activeTab, setActiveTab] = useState(1); // 1: Profile info, 2: Addresses, 3: Security, 4: Custom Sizing
 
   // Personal Info Form
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [updatingInfo, setUpdatingInfo] = useState(false);
+
+  // Traditional Measurements Form
+  const [bust, setBust] = useState("");
+  const [waist, setWaist] = useState("");
+  const [hips, setHips] = useState("");
+  const [length, setLength] = useState("");
+  const [shoulders, setShoulders] = useState("");
+  const [height, setHeight] = useState("");
+  const [measurementNotes, setMeasurementNotes] = useState("");
+  const [unit, setUnit] = useState("cm");
+  const [updatingMeasurements, setUpdatingMeasurements] = useState(false);
 
   // Password Form
   const [oldPassword, setOldPassword] = useState("");
@@ -54,8 +66,48 @@ function Profile() {
       setName(user.name || "");
       setEmail(user.email || "");
       setPhoneNumber(user.phoneNumber || "");
+      if (user.customMeasurements) {
+        setBust(user.customMeasurements.bust || "");
+        setWaist(user.customMeasurements.waist || "");
+        setHips(user.customMeasurements.hips || "");
+        setLength(user.customMeasurements.length || "");
+        setShoulders(user.customMeasurements.shoulders || "");
+        setHeight(user.customMeasurements.height || "");
+        setMeasurementNotes(user.customMeasurements.notes || "");
+        setUnit(user.customMeasurements.unit || "cm");
+      }
     }
   }, [user]);
+
+  // Update Traditional Body Measurements Handler
+  const handleUpdateMeasurements = async (e) => {
+    e.preventDefault();
+    setUpdatingMeasurements(true);
+    try {
+      const res = await axios.put(
+        `${server}/user/update-measurements`,
+        {
+          bust,
+          waist,
+          hips,
+          length,
+          shoulders,
+          height,
+          notes: measurementNotes,
+          unit,
+        },
+        { withCredentials: true }
+      );
+      if (res.data?.success) {
+        toast.success("Traditional sizing profile saved!");
+        dispatch(loadUser());
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to save measurements");
+    } finally {
+      setUpdatingMeasurements(false);
+    }
+  };
 
   // Update Avatar Handler
   const handleAvatarChange = async (e) => {
@@ -247,6 +299,7 @@ function Profile() {
               { id: 1, label: "Personal Information", icon: CgProfile },
               { id: 2, label: "Delivery Addresses", icon: BsGeoAlt },
               { id: 3, label: "Account Security & Password", icon: BsShieldLock },
+              { id: 4, label: "Traditional Sizing Profile", icon: BsScissors },
             ].map((tab) => {
               const Icon = tab.icon;
               return (
@@ -561,6 +614,156 @@ function Profile() {
                     className="py-2.5 px-6 bg-amber-800 hover:bg-amber-900 text-white font-bold rounded-xl text-xs shadow-md transition disabled:bg-gray-300"
                   >
                     {updatingPassword ? "Updating Password..." : "Update Password"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* TAB 4: TRADITIONAL SIZING PROFILE */}
+          {activeTab === 4 && (
+            <div className="animate-fadeIn space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
+                <div>
+                  <h2 className="text-2xl font-black text-gray-900 font-serif flex items-center gap-2">
+                    <BsScissors className="text-amber-800" /> Traditional Habesha Sizing Profile
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Save your body measurements once. They will automatically pre-fill when ordering custom tailored Habesha Kemis!
+                  </p>
+                </div>
+
+                {/* Unit Switcher */}
+                <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl self-start sm:self-auto text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setUnit("cm")}
+                    className={`px-3 py-1 rounded-lg transition ${
+                      unit === "cm" ? "bg-white text-stone-900 shadow-2xs" : "text-stone-500 hover:text-stone-900"
+                    }`}
+                  >
+                    Centimeters (cm)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUnit("inches")}
+                    className={`px-3 py-1 rounded-lg transition ${
+                      unit === "inches" ? "bg-white text-stone-900 shadow-2xs" : "text-stone-500 hover:text-stone-900"
+                    }`}
+                  >
+                    Inches (in)
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={handleUpdateMeasurements} className="space-y-5 max-w-xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-700 block mb-1">
+                      Bust / Chest ({unit})
+                    </label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      placeholder={`e.g. ${unit === "cm" ? "92" : "36"}`}
+                      value={bust}
+                      onChange={(e) => setBust(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-amber-600 focus:bg-white transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-700 block mb-1">
+                      Waist ({unit})
+                    </label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      placeholder={`e.g. ${unit === "cm" ? "74" : "29"}`}
+                      value={waist}
+                      onChange={(e) => setWaist(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-amber-600 focus:bg-white transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-700 block mb-1">
+                      Hips ({unit})
+                    </label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      placeholder={`e.g. ${unit === "cm" ? "102" : "40"}`}
+                      value={hips}
+                      onChange={(e) => setHips(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-amber-600 focus:bg-white transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-700 block mb-1">
+                      Full Dress Length ({unit})
+                    </label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      placeholder={`e.g. ${unit === "cm" ? "142" : "56"}`}
+                      value={length}
+                      onChange={(e) => setLength(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-amber-600 focus:bg-white transition"
+                    />
+                    <span className="text-[10px] text-gray-400 mt-0.5 block">Shoulder to floor/hemline</span>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-700 block mb-1">
+                      Shoulder Width ({unit})
+                    </label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      placeholder={`e.g. ${unit === "cm" ? "40" : "15.5"}`}
+                      value={shoulders}
+                      onChange={(e) => setShoulders(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-amber-600 focus:bg-white transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-700 block mb-1">
+                      Full Height ({unit})
+                    </label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      placeholder={`e.g. ${unit === "cm" ? "168" : "66"}`}
+                      value={height}
+                      onChange={(e) => setHeight(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-amber-600 focus:bg-white transition"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-700 block mb-1">
+                    Special Tailoring Preferences / Fit Notes
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="e.g. Prefer relaxed sleeve cut, high neckline, extra floor drape for heels..."
+                    value={measurementNotes}
+                    onChange={(e) => setMeasurementNotes(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs outline-none focus:border-amber-600 focus:bg-white transition"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={updatingMeasurements}
+                    className="py-3 px-8 bg-amber-800 hover:bg-amber-900 text-white font-bold rounded-xl text-xs shadow-md transition disabled:bg-gray-300"
+                  >
+                    {updatingMeasurements ? "Saving Specs..." : "Save Traditional Sizing Profile"}
                   </button>
                 </div>
               </form>

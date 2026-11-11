@@ -147,6 +147,38 @@ const UserOrderDetails = () => {
     }
   };
 
+  const FULFILLMENT_STAGES = [
+    { label: "Escrow Secured", desc: "CBE / Telebirr trust lock", icon: "💳" },
+    { label: "Weaving & Tailoring", desc: "Pit loom & Tibeb motifs", icon: "🧵" },
+    { label: "Quality Inspected", desc: "Pre-shipment verification", icon: "🔍" },
+    { label: "Out for Delivery", desc: "Courier en route to you", icon: "🚚" },
+    { label: "Delivered & Inspected", desc: "OTP verified & funds released", icon: "✨" },
+  ];
+
+  const getFulfillmentStep = (status) => {
+    switch (status) {
+      case "Processing":
+      case "Order Placed":
+        return 0;
+      case "In Tailoring":
+      case "Crafting":
+      case "Tailoring & Handweaving":
+        return 1;
+      case "Quality Checked":
+      case "Quality Inspected":
+        return 2;
+      case "Transferred to delivery partner":
+      case "Shipping":
+      case "Out for delivery":
+        return 3;
+      case "Delivered - Pending Inspection":
+      case "Delivered":
+        return 4;
+      default:
+        return 0;
+    }
+  };
+
   // If no specific order ID is requested, show list of all user orders
   if (!id) {
     return (
@@ -276,6 +308,119 @@ const UserOrderDetails = () => {
               {data?.status}
             </span>
           </div>
+        </div>
+
+        {/* Courier Handover OTP Banner for Customer */}
+        {data?.deliveryVerification?.deliveryOtp && !data?.deliveryVerification?.isOtpVerified && data?.status !== "Delivered" && (
+          <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🔐</span>
+              <div>
+                <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                  Delivery Handover Verification Code (OTP)
+                </h4>
+                <p className="text-[11px] text-amber-800">
+                  Provide this 6-digit code to the courier or artisan only upon physical delivery to verify your order:
+                </p>
+              </div>
+            </div>
+            <div className="px-5 py-2 bg-white rounded-xl border border-amber-300 shadow-sm font-mono font-black text-2xl text-amber-950 tracking-widest">
+              {data.deliveryVerification.deliveryOtp}
+            </div>
+          </div>
+        )}
+
+        {/* Visual 5-Stage Order Tracking Stepper */}
+        <div className="p-5 sm:p-6 bg-gradient-to-b from-stone-50 via-white to-amber-50/20 rounded-2xl border border-stone-200/80 shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-stone-200/60">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-stone-900 flex items-center gap-2">
+                <span>🚚 Order Fulfillment & Escrow Lifecycle</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                  Live Status: {data?.status}
+                </span>
+              </h3>
+              <p className="text-[11px] text-stone-500 mt-0.5">
+                Track your handwoven garment from the artisan's loom to your doorstep with escrow transparency
+              </p>
+            </div>
+            {data?.deliveryDetails?.trackingCode && (
+              <span className="text-[11px] font-mono font-bold bg-white px-3 py-1 rounded-xl border border-stone-200 text-stone-800 self-start sm:self-auto shadow-2xs">
+                Tracking: {data.deliveryDetails.trackingCode}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+            {FULFILLMENT_STAGES.map((stg, sIdx) => {
+              const currentStep = getFulfillmentStep(data?.status);
+              const isCompleted = sIdx < currentStep || data?.status === "Delivered";
+              const isCurrent = sIdx === currentStep && data?.status !== "Delivered";
+
+              return (
+                <div
+                  key={sIdx}
+                  className={`p-3.5 rounded-2xl border transition relative flex flex-col justify-between ${
+                    isCompleted
+                      ? "bg-emerald-50/90 border-emerald-300 text-emerald-950"
+                      : isCurrent
+                      ? "bg-amber-100/80 border-amber-400 text-amber-950 shadow-xs ring-2 ring-amber-400/30"
+                      : "bg-white/80 border-stone-200 text-stone-400 opacity-60"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xl">{stg.icon}</span>
+                    <span
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                        isCompleted
+                          ? "bg-emerald-600 text-white"
+                          : isCurrent
+                          ? "bg-amber-700 text-white animate-pulse"
+                          : "bg-stone-200 text-stone-600"
+                      }`}
+                    >
+                      {isCompleted ? "✓" : sIdx + 1}
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold leading-tight">{stg.label}</h4>
+                    <p className="text-[10px] mt-0.5 leading-snug line-clamp-2">
+                      {stg.desc}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Pre-Shipment Quality Photo Preview */}
+          {data?.preShipmentProof?.photo?.url && (
+            <div className="mt-3 p-3.5 bg-amber-50/70 rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <img
+                  src={data.preShipmentProof.photo.url}
+                  alt="Quality Check"
+                  className="w-14 h-14 rounded-xl object-cover border border-amber-300 shadow-2xs shrink-0"
+                />
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 bg-white px-2 py-0.5 rounded-full border border-amber-200">
+                    Artisan Pre-Shipment Quality Photo
+                  </span>
+                  <p className="text-xs text-stone-700 mt-1">
+                    {data.preShipmentProof.notes || "Weaving & embroidery craftsmanship inspected before courier dispatch."}
+                  </p>
+                </div>
+              </div>
+              <a
+                href={data.preShipmentProof.photo.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-bold text-amber-900 bg-white px-3 py-1.5 rounded-xl border border-amber-300 hover:bg-amber-100 transition shrink-0 text-center"
+              >
+                Inspect Photo Fullscreen ↗
+              </a>
+            </div>
+          )}
         </div>
 
         {/* Order items */}
@@ -606,6 +751,174 @@ const UserOrderDetails = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Official MoR Electronic Tax Invoice Modal */}
+      {invoiceModalOpen && data && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl p-6 sm:p-8 animate-fadeIn border border-gray-200 my-8 space-y-6 print:m-0 print:p-4 print:shadow-none print:border-none print:w-full">
+            
+            {/* MoR Official Header */}
+            <div className="text-center pb-4 border-b-2 border-stone-800 space-y-1">
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-2xl">🇪🇹</span>
+                <span className="text-xs font-black tracking-widest text-amber-950 uppercase">
+                  Federal Democratic Republic of Ethiopia
+                </span>
+                <span className="text-2xl">⚖️</span>
+              </div>
+              <h2 className="text-base sm:text-lg font-serif font-black text-stone-900 tracking-tight">
+                MINISTRY OF REVENUES (MoR) • የገቢዎች ሚኒስቴር
+              </h2>
+              <p className="text-[11px] font-bold text-stone-600 uppercase tracking-wider">
+                Official Electronic Fiscal Cash Sales Tax Invoice • የኤሌክትሮኒክ የሽያጭ ደረሰኝ
+              </p>
+              <p className="text-[10px] text-stone-400">
+                Issued in accordance with Electronic Transaction Proclamation No. 1205/2020 & VAT Proclamation No. 285/2002
+              </p>
+            </div>
+
+            {/* Invoice Meta Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3.5 bg-stone-50 rounded-2xl border border-stone-200 text-xs">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-stone-400 block">Fiscal Receipt Ref</span>
+                <span className="font-mono font-bold text-stone-900 text-xs sm:text-sm">
+                  ET-TAX-{data.orderNumber || data._id?.slice(-8).toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-stone-400 block">Date & Fiscal Time</span>
+                <span className="font-semibold text-stone-800">
+                  {new Date(data.createdAt || Date.now()).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-stone-400 block">Fiscal Machine No</span>
+                <span className="font-mono text-stone-700 text-xs">FSR-ERCA-MEP-09824</span>
+              </div>
+            </div>
+
+            {/* Tax Entities: Platform Operator, Artisan Merchant & Buyer */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="p-3.5 rounded-xl border border-stone-200 space-y-1">
+                <div className="flex items-center justify-between border-b border-stone-100 pb-1 mb-1">
+                  <span className="font-bold text-amber-950 uppercase text-[10px]">Marketplace Operator</span>
+                  <span className="text-[10px] font-mono text-emerald-800 font-bold">VERIFIED PLATFORM</span>
+                </div>
+                <p className="font-bold text-stone-900">MEP Traditional Crafts PLC</p>
+                <p className="text-stone-600">Platform TIN: <strong className="text-stone-900 font-mono">0064291845</strong></p>
+                <p className="text-stone-600">VAT Reg: <strong className="text-stone-900 font-mono">1198420-VAT-AA</strong></p>
+                <p className="text-stone-500 text-[11px]">Bole Subcity, Woreda 03, Addis Ababa</p>
+              </div>
+
+              <div className="p-3.5 rounded-xl border border-stone-200 space-y-1">
+                <div className="flex items-center justify-between border-b border-stone-100 pb-1 mb-1">
+                  <span className="font-bold text-amber-950 uppercase text-[10px]">Artisan Merchant / Buyer</span>
+                  <span className="text-[10px] font-mono text-emerald-800 font-bold">ESCROW PROTECTED</span>
+                </div>
+                <p className="font-bold text-stone-900">
+                  {data.cart?.[0]?.shop?.name || data.cart?.[0]?.shopName || "Ethiopian Artisan Workshop"}
+                </p>
+                <p className="text-stone-600">Merchant TIN: <strong className="text-stone-900 font-mono">0089421570</strong></p>
+                <div className="pt-1 mt-1 border-t border-stone-100">
+                  <p className="text-stone-700 font-semibold">Buyer: {data.user?.name || user?.name || "Customer"}</p>
+                  <p className="text-stone-500 text-[11px]">
+                    Delivery: {data.shippingAddress?.address1 ? `${data.shippingAddress.address1}, ${data.shippingAddress.city}` : "Addis Ababa"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Itemized Table */}
+            <div className="border border-stone-200 rounded-xl overflow-hidden text-xs">
+              <table className="w-full text-left">
+                <thead className="bg-stone-100 text-stone-700 font-bold uppercase text-[10px] border-b border-stone-200">
+                  <tr>
+                    <th className="p-2.5">Craft Description</th>
+                    <th className="p-2.5 text-center">Qty</th>
+                    <th className="p-2.5 text-right">Unit Price</th>
+                    <th className="p-2.5 text-right">Total (ETB)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {data.cart?.map((item, idx) => {
+                    const price = Number(item.discountPrice || item.originalPrice || 0);
+                    const qty = item.qty || 1;
+                    return (
+                      <tr key={idx} className="text-stone-800">
+                        <td className="p-2.5">
+                          <span className="font-semibold">{item.name}</span>
+                          {item.size && (
+                            <span className="text-[10px] text-stone-400 block">Size: {item.size}</span>
+                          )}
+                        </td>
+                        <td className="p-2.5 text-center">{qty}</td>
+                        <td className="p-2.5 text-right font-mono">{price.toLocaleString()}</td>
+                        <td className="p-2.5 text-right font-mono font-bold">{(price * qty).toLocaleString()}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Financial & Tax Breakdown */}
+            <div className="space-y-1.5 text-xs text-stone-700 pt-2 border-t border-stone-200">
+              <div className="flex justify-between">
+                <span>Taxable Amount (Excl. 15% VAT):</span>
+                <span className="font-mono">
+                  {Math.round((data.totalPrice || 0) / 1.15).toLocaleString()} ETB
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Value Added Tax (VAT 15%):</span>
+                <span className="font-mono">
+                  {((data.totalPrice || 0) - Math.round((data.totalPrice || 0) / 1.15)).toLocaleString()} ETB
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Courier Logistics / Delivery Fee:</span>
+                <span className="font-mono">{(data.shipping || 0).toLocaleString()} ETB</span>
+              </div>
+              <div className="flex justify-between text-sm font-extrabold text-stone-950 pt-2 border-t-2 border-stone-800">
+                <span>Grand Total Paid:</span>
+                <span className="font-mono text-base text-amber-950">
+                  {Number(data.totalPrice || 0).toLocaleString()} ETB
+                </span>
+              </div>
+            </div>
+
+            {/* Escrow Legal Seal & Validation */}
+            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between text-[11px] text-emerald-950">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🏛️</span>
+                <div>
+                  <strong className="block uppercase font-bold text-[10px]">CBE & Telebirr Escrow Assurance</strong>
+                  <span>Funds held in escrow trust until customer OTP handover verification</span>
+                </div>
+              </div>
+              <span className="font-mono font-bold text-xs bg-white px-2 py-1 rounded border border-emerald-300">
+                STATUS: PAID
+              </span>
+            </div>
+
+            {/* Actions: Print and Close */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-stone-200 print:hidden">
+              <button
+                onClick={() => setInvoiceModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-100 rounded-xl transition"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="px-5 py-2 bg-gradient-to-r from-amber-700 to-amber-900 hover:from-amber-800 hover:to-amber-950 text-white font-bold rounded-xl text-xs shadow-md flex items-center gap-2 transition"
+              >
+                <span>🖨️ Print / Save PDF Invoice</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

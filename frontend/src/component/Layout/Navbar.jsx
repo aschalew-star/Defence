@@ -19,6 +19,16 @@ function Navbar({ active, show }) {
   const [searchData, setSearchData] = useState([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [currency, setCurrency] = useState(
+    localStorage.getItem("mep_currency") || "ETB"
+  );
+
+  const toggleCurrency = () => {
+    const nextCur = currency === "ETB" ? "USD" : "ETB";
+    setCurrency(nextCur);
+    localStorage.setItem("mep_currency", nextCur);
+    window.dispatchEvent(new CustomEvent("currencyChange", { detail: nextCur }));
+  };
 
   const searchRef = useRef(null);
   const debounceRef = useRef(null);
@@ -95,9 +105,31 @@ function Navbar({ active, show }) {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md shadow-sm border-b border-amber-100/60 transition-all">
-      {/* Top Banner */}
-      <div className="bg-gradient-to-r from-amber-800 via-amber-900 to-amber-950 text-amber-100 text-xs py-1.5 px-4 text-center font-medium hidden md:block tracking-wide">
-        🇪🇹 Handcrafted Ethiopian Heritage • Free Delivery in Addis Ababa over 3,000 ETB • Secure Chapa & Telebirr Checkout
+      {/* Top Banner with Currency Switcher & Heritage Brand */}
+      <div className="bg-gradient-to-r from-amber-900 via-stone-900 to-amber-950 text-amber-100 text-xs py-1.5 px-4 hidden sm:block tracking-wide">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span>🇪🇹</span>
+            <span className="font-bold text-amber-200">የኢትዮጵያ ባህላዊ አልባሳት</span>
+            <span className="text-stone-400">• Authentic Pit Loom Crafts</span>
+          </div>
+
+          <div className="text-amber-200/90 text-[11px] hidden md:block">
+            Free Delivery in Addis Ababa over 3,000 ETB • CBE & Telebirr Escrow Protected
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Currency Switcher */}
+            <button
+              onClick={toggleCurrency}
+              className="px-2.5 py-0.5 rounded-full bg-amber-800/80 hover:bg-amber-700 text-amber-100 text-[11px] font-bold border border-amber-600/60 transition flex items-center gap-1 cursor-pointer"
+              title="Switch Currency between ETB and USD"
+            >
+              <span>{currency === "ETB" ? "🇪🇹 ETB (ብር)" : "🇺🇸 USD ($)"}</span>
+              <span className="text-[9px] text-amber-300">⇄</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Main Header Bar */}

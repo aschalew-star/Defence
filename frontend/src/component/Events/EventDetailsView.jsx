@@ -63,6 +63,20 @@ function EventDetailsView() {
   const [customLength, setCustomLength] = useState("");
   const [customNotes, setCustomNotes] = useState("");
 
+  const handleAutofillMeasurements = () => {
+    if (!user?.customMeasurements || (!user.customMeasurements.bust && !user.customMeasurements.waist)) {
+      toast.info("No saved sizing profile found in your account!");
+      return;
+    }
+    const cm = user.customMeasurements;
+    setCustomBust(cm.bust || "");
+    setCustomWaist(cm.waist || "");
+    setCustomHips(cm.hips || "");
+    setCustomLength(cm.length || cm.height || "");
+    setCustomNotes(cm.notes || "");
+    toast.success("Autofilled from your saved traditional sizing profile!");
+  };
+
   // Live countdown state
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
@@ -546,8 +560,19 @@ function EventDetailsView() {
               {/* Custom Measurements Accordion (If Enabled) */}
               {event.isCustomizable && (
                 <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200/60 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
-                    <BsScissors /> Custom Tailoring Measurements (Optional)
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
+                      <BsScissors /> Custom Tailoring Measurements (Optional)
+                    </div>
+                    {user?.customMeasurements && (user.customMeasurements.bust || user.customMeasurements.waist) && (
+                      <button
+                        type="button"
+                        onClick={handleAutofillMeasurements}
+                        className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 text-[11px] font-bold rounded-lg border border-amber-300 transition flex items-center gap-1 cursor-pointer"
+                      >
+                        ⚡ Autofill
+                      </button>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <input

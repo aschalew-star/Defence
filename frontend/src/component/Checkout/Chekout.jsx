@@ -4,7 +4,7 @@ import { useSelector } from "react-redux";
 import axios from "axios";
 import { server } from "../../server";
 import { toast } from "react-toastify";
-import { BsShieldCheck, BsTruck, BsTag, BsCheck2, BsArrowLeft } from "react-icons/bs";
+import { BsShieldCheck, BsTruck, BsTag, BsCheck2, BsArrowLeft, BsScissors } from "react-icons/bs";
 import { FiCheck, FiShoppingBag } from "react-icons/fi";
 import CheckoutSteps from "./Checkoutprocess";
 
@@ -25,6 +25,29 @@ const Chekout = () => {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [applyingCoupon, setApplyingCoupon] = useState(false);
+
+  // Custom Tailoring state
+  const [includeCustomMeasurements, setIncludeCustomMeasurements] = useState(false);
+  const [bust, setBust] = useState("");
+  const [waist, setWaist] = useState("");
+  const [hips, setHips] = useState("");
+  const [length, setLength] = useState("");
+  const [tailoringNotes, setTailoringNotes] = useState("");
+
+  const handleAutofillMeasurements = () => {
+    if (!user?.customMeasurements || (!user.customMeasurements.bust && !user.customMeasurements.waist)) {
+      toast.info("No saved sizing profile found. You can set one in your Account Profile!");
+      return;
+    }
+    const cm = user.customMeasurements;
+    setBust(cm.bust || "");
+    setWaist(cm.waist || "");
+    setHips(cm.hips || "");
+    setLength(cm.length || "");
+    setTailoringNotes(cm.notes || "");
+    setIncludeCustomMeasurements(true);
+    toast.success("Autofilled from your saved traditional sizing profile!");
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -117,6 +140,10 @@ const Chekout = () => {
       city: city.trim(),
     };
 
+    const customMeasurements = includeCustomMeasurements
+      ? { bust, waist, hips, length, notes: tailoringNotes }
+      : (user?.customMeasurements?.bust ? user.customMeasurements : {});
+
     const orderData = {
       cart: cartList,
       totalPrice,
@@ -127,6 +154,7 @@ const Chekout = () => {
       shippingAddress,
       user,
       phoneNumber: phoneNumber.trim(),
+      customMeasurements,
     };
 
     localStorage.setItem("latestOrder", JSON.stringify(orderData));
@@ -307,6 +335,108 @@ const Chekout = () => {
               </div>
             </div>
 
+            {/* Custom Tailoring & Sizing Accordion */}
+            <div className="pt-2 border-t border-gray-100">
+              <div className="bg-amber-50/50 rounded-2xl border border-amber-200/60 p-4 sm:p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={includeCustomMeasurements}
+                      onChange={(e) => setIncludeCustomMeasurements(e.target.checked)}
+                      className="w-4 h-4 text-amber-700 rounded border-gray-300 focus:ring-amber-500 accent-amber-700 cursor-pointer"
+                    />
+                    <span className="text-xs sm:text-sm font-bold text-gray-900 flex items-center gap-2">
+                      <BsScissors className="text-amber-700 text-base" />
+                      <span>Custom Tailoring for Habesha Kemis / Traditional Attire</span>
+                    </span>
+                  </label>
+
+                  {user?.customMeasurements && (user.customMeasurements.bust || user.customMeasurements.waist) && (
+                    <button
+                      type="button"
+                      onClick={handleAutofillMeasurements}
+                      className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold rounded-xl border border-amber-300 transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+                    >
+                      <span>⚡ Autofill from My Sizing Profile</span>
+                    </button>
+                  )}
+                </div>
+
+                {includeCustomMeasurements && (
+                  <div className="space-y-4 pt-2 border-t border-amber-200/60 animate-fadeIn">
+                    <p className="text-xs text-amber-900/80">
+                      Our Shemma pit weavers and Tilf embroiderers will hand-tailor your order to these exact body dimensions:
+                    </p>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider block mb-1">
+                          Bust / Chest (ደረት)
+                        </label>
+                        <input
+                          type="text"
+                          value={bust}
+                          onChange={(e) => setBust(e.target.value)}
+                          placeholder="e.g. 92 cm"
+                          className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-amber-600 font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider block mb-1">
+                          Waist (ወገብ)
+                        </label>
+                        <input
+                          type="text"
+                          value={waist}
+                          onChange={(e) => setWaist(e.target.value)}
+                          placeholder="e.g. 74 cm"
+                          className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-amber-600 font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider block mb-1">
+                          Hips (ዳሌ)
+                        </label>
+                        <input
+                          type="text"
+                          value={hips}
+                          onChange={(e) => setHips(e.target.value)}
+                          placeholder="e.g. 100 cm"
+                          className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-amber-600 font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider block mb-1">
+                          Dress Length (ቁመት)
+                        </label>
+                        <input
+                          type="text"
+                          value={length}
+                          onChange={(e) => setLength(e.target.value)}
+                          placeholder="e.g. 140 cm"
+                          className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-amber-600 font-semibold"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider block mb-1">
+                        Tailoring Notes / Embroidery Preferences (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={tailoringNotes}
+                        onChange={(e) => setTailoringNotes(e.target.value)}
+                        placeholder="e.g. Gold thread tibeb border, loose sleeves, high neckline..."
+                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-amber-600"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Submit Button */}
             <div className="pt-4">
               <button
@@ -331,24 +461,48 @@ const Chekout = () => {
               </span>
             </h3>
 
-            {/* Cart Items Preview */}
-            <div className="space-y-3 max-h-60 overflow-y-auto no-scrollbar pr-1">
-              {cartList.map((item) => (
-                <div key={item._id} className="flex items-center gap-3">
-                  <img
-                    src={item.images?.[0]?.url || "/placeholder.jpg"}
-                    alt={item.name}
-                    className="w-12 h-12 rounded-xl object-cover border border-gray-100 shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h5 className="text-xs font-bold text-gray-900 truncate">{item.name}</h5>
-                    <p className="text-[11px] text-gray-400">
-                      Qty: {item.qty} {item.selectedSize ? `• Size: ${item.selectedSize}` : ""}
-                    </p>
+            {/* Multi-Merchant Grouped Cart Items Preview */}
+            <div className="space-y-4 max-h-72 overflow-y-auto no-scrollbar pr-1">
+              {Object.entries(
+                cartList.reduce((acc, item) => {
+                  const shopName =
+                    item.shop?.name || item.shopName || "Habesha Artisan Workshop";
+                  if (!acc[shopName]) acc[shopName] = [];
+                  acc[shopName].push(item);
+                  return acc;
+                }, {})
+              ).map(([shopName, items], gIdx) => (
+                <div key={gIdx} className="bg-stone-50/70 p-3 rounded-2xl border border-stone-100 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-amber-900 border-b border-stone-200/60 pb-1.5">
+                    <span className="flex items-center gap-1.5">
+                      <span>📦 Package {gIdx + 1}:</span>
+                      <span className="text-stone-800">{shopName}</span>
+                    </span>
+                    <span className="text-stone-400 font-normal">
+                      {items.length} item{items.length > 1 ? "s" : ""}
+                    </span>
                   </div>
-                  <span className="text-xs font-extrabold text-amber-900">
-                    {(Number(item.discountPrice || item.originalPrice || 0) * (item.qty || 1)).toLocaleString()} ETB
-                  </span>
+
+                  <div className="space-y-2.5">
+                    {items.map((item) => (
+                      <div key={item._id} className="flex items-center gap-3">
+                        <img
+                          src={item.featuredImage?.url || item.images?.[0]?.url || "/placeholder.jpg"}
+                          alt={item.name}
+                          className="w-11 h-11 rounded-xl object-cover border border-stone-200 shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h5 className="text-xs font-bold text-gray-900 truncate">{item.name}</h5>
+                          <p className="text-[11px] text-gray-400">
+                            Qty: {item.qty} {item.selectedSize ? `• Size: ${item.selectedSize}` : ""}
+                          </p>
+                        </div>
+                        <span className="text-xs font-extrabold text-amber-900 font-mono">
+                          {(Number(item.discountPrice || item.originalPrice || 0) * (item.qty || 1)).toLocaleString()} ETB
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>

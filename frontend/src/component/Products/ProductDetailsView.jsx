@@ -78,6 +78,24 @@ function ProductDetailsView() {
   // Fullscreen image modal
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
+  const handleAutofillMeasurements = () => {
+    if (!user?.customMeasurements || (!user.customMeasurements.bust && !user.customMeasurements.waist)) {
+      toast.info("No saved sizing profile found in your account!");
+      return;
+    }
+    const cm = user.customMeasurements;
+    setCustomMeasurements({
+      bust: cm.bust || "",
+      waist: cm.waist || "",
+      hips: cm.hips || "",
+      heightOrLength: cm.length || cm.height || "",
+      shoulderToShoulder: cm.shoulders || "",
+      additionalInstructions: cm.notes || "",
+    });
+    setShowCustomTailoring(true);
+    toast.success("Autofilled from your saved traditional sizing profile!");
+  };
+
   // Fetch or find product
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -661,12 +679,23 @@ function ProductDetailsView() {
 
                 {/* Custom Body Tailoring Drawer (Accordion) */}
                 {showCustomTailoring && (
-                  <div className="mt-4 p-5 rounded-2xl bg-amber-50/50 border border-amber-200 animate-fadeIn">
-                    <div className="flex items-center gap-2 mb-3 text-amber-950 font-bold text-xs">
-                      <BsScissors className="text-amber-700 text-base" />
-                      <span>Custom Tailored Kemis Body Measurements (Optional)</span>
+                  <div className="mt-4 p-5 rounded-2xl bg-amber-50/50 border border-amber-200 animate-fadeIn space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-amber-200/60">
+                      <div className="flex items-center gap-2 text-amber-950 font-bold text-xs">
+                        <BsScissors className="text-amber-700 text-base" />
+                        <span>Custom Tailored Kemis Body Measurements (Optional)</span>
+                      </div>
+                      {user?.customMeasurements && (user.customMeasurements.bust || user.customMeasurements.waist) && (
+                        <button
+                          type="button"
+                          onClick={handleAutofillMeasurements}
+                          className="px-3 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold rounded-xl border border-amber-300 transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+                        >
+                          <span>⚡ Autofill from My Sizing Profile</span>
+                        </button>
+                      )}
                     </div>
-                    <p className="text-[11px] text-amber-900/80 mb-4">
+                    <p className="text-[11px] text-amber-900/80">
                       Our master weavers will tailor your Kemis precisely to your
                       body. Provide your measurements in centimeters or inches:
                     </p>
