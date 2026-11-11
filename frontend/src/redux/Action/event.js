@@ -2,27 +2,31 @@ import axios from "axios";
 import { server } from "../../server";
 
 // create event
-export const createevent = (data) => async (dispatch) => {
+export const createevent = (eventData) => async (dispatch) => {
   try {
     dispatch({
       type: "eventCreateRequest",
     });
 
-    const { d } = await axios.post(`${server}/event/create-event`, data);
+    const { data } = await axios.post(`${server}/event/create-event`, eventData, {
+      withCredentials: true,
+    });
+
     dispatch({
       type: "eventCreateSuccess",
-      payload: d.event,
+      payload: data.event,
     });
   } catch (error) {
     dispatch({
       type: "eventCreateFail",
-      payload: error.response.data.message,
+      payload: error.response?.data?.message || error.message,
     });
   }
 };
 
 // get all events of a shop
 export const getAllEventsShop = (id) => async (dispatch) => {
+  if (!id) return;
   try {
     dispatch({
       type: "getAlleventsShopRequest",
@@ -36,7 +40,7 @@ export const getAllEventsShop = (id) => async (dispatch) => {
   } catch (error) {
     dispatch({
       type: "getAlleventsShopFailed",
-      payload: error.response.data.message,
+      payload: error.response?.data?.message || error.message,
     });
   }
 };
@@ -62,7 +66,7 @@ export const deleteEvent = (id) => async (dispatch) => {
   } catch (error) {
     dispatch({
       type: "deleteeventFailed",
-      payload: error.response.data.message,
+      payload: error.response?.data?.message || error.message,
     });
   }
 };
@@ -82,7 +86,7 @@ export const getAllEvents = () => async (dispatch) => {
   } catch (error) {
     dispatch({
       type: "getAlleventsFailed",
-      payload: error.response.data.message,
+      payload: error.response?.data?.message || error.message,
     });
   }
 };

@@ -1,23 +1,22 @@
-import React from "react";
+﻿import React from "react";
 import CreateProduct from "../../component/shop/ProductCreate";
-import Navbar from "../../component/Layout/Navbar";
+import MerchantNavbar from "../../component/shop/MerchantNavbar";
 import DashboardSideBar from "../../component/shop/DashboardSideBar";
 
-function Dashbord() {
+function ProductCreatePage() {
   return (
-    <div className="pt-48 md:pt-16 -mt-1">
-      <Navbar show={7} />
-      <div className="flex items-center justify-between w-full">
-            <div className="w-[80px] 800px:w-[330px]">
-              <DashboardSideBar active={4} />
-            </div>
-            <div className="w-full justify-center  flex">
-                <CreateProduct/>
-            </div>
-          </div>
+    <div className="min-h-screen bg-stone-50">
+      <MerchantNavbar />
+      <div className="flex w-full pt-16">
+        <div className="w-[72px] md:w-[270px] flex-shrink-0">
+          <DashboardSideBar active={4} />
+        </div>
+        <div className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 overflow-hidden flex justify-center">
+          <CreateProduct />
+        </div>
+      </div>
     </div>
   );
 }
 
-export default Dashbord;
-
+export default ProductCreatePage;

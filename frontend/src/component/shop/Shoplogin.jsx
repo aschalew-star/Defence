@@ -1,152 +1,125 @@
-import { React, useEffect, useState } from "react";
+import { server } from "../../server";
+import React, { useState } from "react";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { BsShop } from "react-icons/bs";
+import ShopHeader from "./ShopHeader";
 
 function Shoplogin() {
-
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
     // Admin login bypass
     if (email === "Admin@gmail.com" && password === "1234") {
       toast.success("Admin login success!");
+      setLoading(false);
       return navigate("/AdminDashboard");
     }
 
-
-    await axios
-      .post(
-        "http://localhost:5000/shop/login",
-        {
-          email,
-          password,
-        },
+    try {
+      await axios.post(
+        `${server}/shop/login`,
+        { email, password },
         { withCredentials: true }
-      )
-      .then((res) => {
-        toast.success("Login Success!");
-        console.log(res.data.success);
-        console.log();
-        navigate("/Dashboard");
-        window.location.reload(true); 
-      })
-      .catch((err) => {
-        toast.error(err.response.data.message);
-        console.log(err.response.data.message);
-      });
+      );
+      toast.success("Welcome back to your Shop Dashboard!");
+      setLoading(false);
+      navigate("/Dashboard");
+      window.location.reload();
+    } catch (err) {
+      setLoading(false);
+      toast.error(err.response?.data?.message || "Invalid shop credentials");
+    }
   };
 
   return (
-    <div className=" bg-gray-50 flex flex-col justify-center py-8 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Login to your shop
-        </h2>
-      </div>
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Email address
-              </label>
-              <div className="mt-1">
-                <input
-                  type="email"
-                  name="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-between">
+      <ShopHeader isLogin={true} />
+
+      <div className="pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-md mx-auto w-full">
+        <div className="bg-white p-8 sm:p-10 rounded-3xl shadow-xl border border-gray-100">
+          <div className="text-center mb-8">
+            <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto mb-4 shadow-sm">
+              <BsShop className="text-2xl" />
             </div>
+            <h2 className="text-2xl font-black text-gray-900 font-serif">
+              Artisan Shop Login
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">
+              Manage your products, orders, and customer messages
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                Shop Email
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your-shop@example.com"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 text-sm outline-none transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
                 Password
               </label>
-              <div className="mt-1 relative">
+              <div className="relative">
                 <input
                   type={visible ? "text" : "password"}
-                  name="password"
-                  autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="••••••••"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 text-sm outline-none transition pr-10"
                 />
-                {visible ? (
-                  <AiOutlineEye
-                    className="absolute right-2 top-2 cursor-pointer"
-                    size={25}
-                    onClick={() => setVisible(false)}
-                  />
-                ) : (
-                  <AiOutlineEyeInvisible
-                    className="absolute right-2 top-2 cursor-pointer"
-                    size={25}
-                    onClick={() => setVisible(true)}
-                  />
-                )}
-              </div>
-            </div>
-            <div className="flex justify-between">
-              <div className="flex ">
-                <input
-                  type="checkbox"
-                  name="remember-me"
-                  id="remember-me"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label
-                  htmlFor="remember-me"
-                  className="ml-2 block text-sm text-gray-900"
+                <button
+                  type="button"
+                  onClick={() => setVisible(!visible)}
+                  className="absolute right-3.5 top-3 text-gray-400 hover:text-gray-600"
                 >
-                  Remember me
-                </label>
-              </div>
-              <div className="text-sm">
-                <a
-                  href=".forgot-password"
-                  className="font-medium text-blue-600 hover:text-blue-500"
-                >
-                  Forgot your password?
-                </a>
+                  {visible ? <AiOutlineEyeInvisible className="text-lg" /> : <AiOutlineEye className="text-lg" />}
+                </button>
               </div>
             </div>
-            <div>
-              <button
-                type="submit"
-                className="group relative w-full h-[40px] flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-              >
-                Submit
-              </button>
-            </div>
-            <div className="flex w-full">
-              <h4>Not have any account?</h4>
-              <Link to="/shop-create" className="text-blue-600 pl-2">
-                Sign Up
-              </Link>
-            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-4 py-3 bg-gradient-to-r from-amber-700 to-amber-900 hover:from-amber-800 hover:to-amber-950 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 disabled:bg-gray-400"
+            >
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <span>Sign In to Dashboard</span>
+              )}
+            </button>
           </form>
+
+          <div className="mt-8 pt-6 border-t border-gray-100 text-center text-xs text-gray-500">
+            Don't have an artisan account?{" "}
+            <Link to="/shop-create" className="text-amber-800 font-bold hover:underline">
+              Register a New Shop
+            </Link>
+          </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default Shoplogin
+export default Shoplogin;

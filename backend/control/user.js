@@ -1,122 +1,143 @@
-// const User=require("../model/user")
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const asynfun = require("../utils/asynerror");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const handleerror = require("../utils/handleerror");
+const cloudinary = require("cloudinary");
 const Router = express.Router();
 const { isAuthenticated, isAdmin } = require("../middleware/auth");
+const User = require("../model/user");
 
-const User = require("../model/user")
+const getCookieOptions = () => ({
+  expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+  httpOnly: true,
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  secure: process.env.NODE_ENV === "production",
+});
 
+// 1. User Signup
 Router.post(
   "/signup",
   asynfun(async (req, res, next) => {
     try {
-      const { name, email, password } = req.body;
+      const { name, email, password, avatar, phoneNumber } = req.body;
 
       if (!name || !email || !password) {
-       return next(new handleerror("please complete the feild", 400));
+        return next(new handleerror("Please complete all required fields!", 400));
       }
-      // console.log(name, password, email);
 
-      const isExist = await User.findOne({ email }).select('password');
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return next(new handleerror("Please provide a valid email address!", 400));
+      }
 
-      console.log(isExist);
+      if (password.length < 6) {
+        return next(new handleerror("Password must be at least 6 characters!", 400));
+      }
 
+      const isExist = await User.findOne({ email: email.toLowerCase().trim() });
       if (isExist) {
-        return next(new handleerror("user exists", 400));
+        return next(new handleerror("User already exists with this email!", 400));
       }
 
-      const hashpassword=await bcrypt.hash(password,10);
+      let avatarData = undefined;
+      if (avatar && avatar.startsWith("data:image")) {
+        const myCloud = await cloudinary.v2.uploader.upload(avatar, {
+          folder: "avatars",
+          width: 150,
+          crop: "scale",
+        });
+        avatarData = {
+          public_id: myCloud.public_id,
+          url: myCloud.secure_url,
+        };
+      }
 
-      // console.log(hashpassword);
+      const hashpassword = await bcrypt.hash(password, 10);
 
-
-      const newUser=new User( {
-        name:name,
-        password:hashpassword,
-        email:email
+      const newUser = new User({
+        name: name.trim(),
+        password: hashpassword,
+        email: email.toLowerCase().trim(),
+        phoneNumber: phoneNumber ? phoneNumber.trim() : "",
+        avatar: avatarData,
       });
 
       await newUser.save();
 
-      const token=jwt.sign({id:newUser._id},"Secret",{ expiresIn: "90d" });
-      console.log(token);
-      
-      const options = {
-        expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
-        httpOnly: true,
-        // sameSite: "none",
-        // secure: true,
-      };
-    
-      res.status(200).cookie("token", token, options).json({
+      const token = jwt.sign(
+        { id: newUser._id },
+        process.env.JWT_SECRET || "Secret",
+        { expiresIn: process.env.JWT_EXPIRES || "90d" }
+      );
+
+      newUser.password = undefined;
+
+      res.status(201).cookie("token", token, getCookieOptions()).json({
         success: true,
-        user:newUser,
-        token:token
+        user: newUser,
+        token,
       });
-
-
     } catch (error) {
-      console.log(error);
+      return next(new handleerror(error.message, 500));
     }
   })
 );
 
-
-
+// 2. User Login
 Router.post(
   "/login",
-  asynfun(async (req, res,next) => {
+  asynfun(async (req, res, next) => {
     try {
       const { email, password } = req.body;
 
       if (!email || !password) {
-        return next(new handleerror("please complete all feild", 400));
+        return next(new handleerror("Please provide both email and password!", 400));
       }
 
-      const isExist = await User.findOne({ email }).select('password');
+      const user = await User.findOne({
+        email: email.toLowerCase().trim(),
+      }).select("+password");
 
-      // console.log(isExist);
-
-      if (!isExist) {
-        return next(new handleerror("user does not exist", 400));
+      if (!user) {
+        return next(new handleerror("User does not exist with this email!", 400));
       }
 
-      const compare=await bcrypt.compare(password,isExist.password);
-
-      // console.log(compare);
-
-      if(!compare){
-        return next(new handleerror("Incorrect password", 400));
-
+      if (user.isActive === false) {
+        return next(
+          new handleerror("Your account has been deactivated. Please contact support.", 403)
+        );
       }
 
-     const hash= jwt.sign({id:isExist._id},"Secret",{expiresIn:"7d"});
+      const isPasswordMatched = await bcrypt.compare(password, user.password);
 
+      if (!isPasswordMatched) {
+        return next(new handleerror("Incorrect email or password!", 400));
+      }
 
-     const option={ expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
-      httpOnly: true,
-      // sameSite: "none",
-      // secure: true,
-    }
+      user.lastLogin = new Date();
+      await user.save();
 
-     res.status(200).cookie("token",hash,option).json({
-      success: true,
-      user:isExist,
-      token:hash
-     })
+      const token = jwt.sign(
+        { id: user._id },
+        process.env.JWT_SECRET || "Secret",
+        { expiresIn: process.env.JWT_EXPIRES || "90d" }
+      );
 
-     console.log(hash);
+      user.password = undefined;
 
+      res.status(200).cookie("token", token, getCookieOptions()).json({
+        success: true,
+        user,
+        token,
+      });
     } catch (error) {
-      next(new handleerror(error.message,400));
+      return next(new handleerror(error.message, 500));
     }
   })
 );
 
-// load user
+// 3. Load Current User
 Router.get(
   "/getuser",
   isAuthenticated,
@@ -125,7 +146,7 @@ Router.get(
       const user = await User.findById(req.user.id);
 
       if (!user) {
-        return next(new handleerror("User doesn't exists", 400));
+        return next(new handleerror("User doesn't exist!", 400));
       }
 
       res.status(200).json({
@@ -138,7 +159,7 @@ Router.get(
   })
 );
 
-// log out user
+// 4. Logout User
 Router.get(
   "/logout",
   asynfun(async (req, res, next) => {
@@ -146,10 +167,10 @@ Router.get(
       res.cookie("token", null, {
         expires: new Date(Date.now()),
         httpOnly: true,
-        sameSite: "none",
-        secure: true,
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        secure: process.env.NODE_ENV === "production",
       });
-      res.status(201).json({
+      res.status(200).json({
         success: true,
         message: "Log out successful!",
       });
@@ -159,7 +180,7 @@ Router.get(
   })
 );
 
-// update user info
+// 5. Update User Profile Info
 Router.put(
   "/update-user-info",
   isAuthenticated,
@@ -167,27 +188,28 @@ Router.put(
     try {
       const { email, password, phoneNumber, name } = req.body;
 
-      const user = await User.findOne({ email }).select("+password");
+      const user = await User.findById(req.user.id).select("+password");
 
       if (!user) {
-        return next(new handleerror("User not found", 400));
+        return next(new handleerror("User not found!", 400));
       }
 
-      const isPasswordValid = await user.comparePassword(password);
+      const isPasswordValid = await bcrypt.compare(password, user.password);
 
       if (!isPasswordValid) {
         return next(
-          new handleerror("Please provide the correct information", 400)
+          new handleerror("Please provide the correct current password!", 400)
         );
       }
 
-      user.name = name;
-      user.email = email;
-      user.phoneNumber = phoneNumber;
+      user.name = name || user.name;
+      user.email = email || user.email;
+      user.phoneNumber = phoneNumber !== undefined ? phoneNumber : user.phoneNumber;
 
       await user.save();
+      user.password = undefined;
 
-      res.status(201).json({
+      res.status(200).json({
         success: true,
         user,
       });
@@ -197,21 +219,24 @@ Router.put(
   })
 );
 
-// update user avatar
+// 6. Update User Avatar
 Router.put(
   "/update-avatar",
   isAuthenticated,
   asynfun(async (req, res, next) => {
     try {
       let existsUser = await User.findById(req.user.id);
-      if (req.body.avatar !== "") {
-        const imageId = existsUser.avatar.public_id;
+      if (req.body.avatar && req.body.avatar !== "") {
+        const imageId = existsUser.avatar?.public_id;
 
-        await cloudinary.v2.uploader.destroy(imageId);
+        if (imageId) {
+          await cloudinary.v2.uploader.destroy(imageId).catch(() => {});
+        }
 
         const myCloud = await cloudinary.v2.uploader.upload(req.body.avatar, {
           folder: "avatars",
           width: 150,
+          crop: "scale",
         });
 
         existsUser.avatar = {
@@ -232,7 +257,7 @@ Router.put(
   })
 );
 
-// update user addresses
+// 7. Update User Addresses
 Router.put(
   "/update-user-addresses",
   isAuthenticated,
@@ -241,22 +266,23 @@ Router.put(
       const user = await User.findById(req.user.id);
 
       const sameTypeAddress = user.addresses.find(
-        (address) => address.addressType === req.body.addressType
+        (address) =>
+          address.addressType === req.body.addressType &&
+          (!req.body._id || address._id.toString() !== req.body._id)
       );
       if (sameTypeAddress) {
         return next(
-          new handleerror(`${req.body.addressType} address already exists`)
+          new handleerror(`${req.body.addressType} address already exists!`, 400)
         );
       }
 
-      const existsAddress = user.addresses.find(
-        (address) => address._id === req.body._id
+      const existsAddressIndex = user.addresses.findIndex(
+        (address) => address._id && address._id.toString() === req.body._id
       );
 
-      if (existsAddress) {
-        Object.assign(existsAddress, req.body);
+      if (existsAddressIndex !== -1) {
+        Object.assign(user.addresses[existsAddressIndex], req.body);
       } else {
-        // add the new address to the array
         user.addresses.push(req.body);
       }
 
@@ -272,7 +298,7 @@ Router.put(
   })
 );
 
-// delete user address
+// 8. Delete User Address
 Router.delete(
   "/delete-user-address/:id",
   isAuthenticated,
@@ -282,9 +308,7 @@ Router.delete(
       const addressId = req.params.id;
 
       await User.updateOne(
-        {
-          _id: userId,
-        },
+        { _id: userId },
         { $pull: { addresses: { _id: addressId } } }
       );
 
@@ -297,7 +321,7 @@ Router.delete(
   })
 );
 
-// update user password
+// 9. Update User Password
 Router.put(
   "/update-user-password",
   isAuthenticated,
@@ -305,8 +329,9 @@ Router.put(
     try {
       const user = await User.findById(req.user.id).select("+password");
 
-      const isPasswordMatched = await user.comparePassword(
-        req.body.oldPassword
+      const isPasswordMatched = await bcrypt.compare(
+        req.body.oldPassword,
+        user.password
       );
 
       if (!isPasswordMatched) {
@@ -314,11 +339,10 @@ Router.put(
       }
 
       if (req.body.newPassword !== req.body.confirmPassword) {
-        return next(
-          new handleerror("Password doesn't matched with each other!", 400)
-        );
+        return next(new handleerror("Passwords do not match!", 400));
       }
-      user.password = req.body.newPassword;
+
+      user.password = await bcrypt.hash(req.body.newPassword, 10);
 
       await user.save();
 
@@ -332,14 +356,18 @@ Router.put(
   })
 );
 
-// find user infoormation with the userId
+// 10. Find User Information with userId
 Router.get(
   "/user-info/:id",
   asynfun(async (req, res, next) => {
     try {
       const user = await User.findById(req.params.id);
 
-      res.status(201).json({
+      if (!user) {
+        return next(new handleerror("User not found!", 404));
+      }
+
+      res.status(200).json({
         success: true,
         user,
       });
@@ -349,17 +377,17 @@ Router.get(
   })
 );
 
-// all users --- for admin
+// 11. All Users (Admin Protected)
 Router.get(
   "/admin-all-users",
-  // isAuthenticated,
-  // isAdmin("Admin"),
+  isAuthenticated,
+  isAdmin("admin", "superadmin"),
   asynfun(async (req, res, next) => {
     try {
       const users = await User.find().sort({
         createdAt: -1,
       });
-      res.status(201).json({
+      res.status(200).json({
         success: true,
         users,
       });
@@ -369,28 +397,27 @@ Router.get(
   })
 );
 
-// delete users --- admin
+// 12. Delete User (Admin Protected)
 Router.delete(
   "/delete-user/:id",
-  // isAuthenticated,
-  // isAdmin("Admin"),
+  isAuthenticated,
+  isAdmin("admin", "superadmin"),
   asynfun(async (req, res, next) => {
     try {
       const user = await User.findById(req.params.id);
 
       if (!user) {
-        return next(
-          new handleerror("User is not available with this id", 400)
-        );
+        return next(new handleerror("User is not available with this id", 400));
       }
 
       const imageId = user?.avatar?.public_id;
-
-      // await cloudinary.v2.uploader.destroy(imageId);
+      if (imageId) {
+        await cloudinary.v2.uploader.destroy(imageId).catch(() => {});
+      }
 
       await User.findByIdAndDelete(req.params.id);
 
-      res.status(201).json({
+      res.status(200).json({
         success: true,
         message: "User deleted successfully!",
       });
@@ -399,7 +426,5 @@ Router.delete(
     }
   })
 );
-
-
 
 module.exports = Router;

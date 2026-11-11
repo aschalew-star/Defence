@@ -1,20 +1,18 @@
-import React from 'react'
-import Productdynamic from '../component/Productdynamic'
+import React from "react";
+import Productdynamic from "../component/Productdynamic";
 import Navbar from "../component/Layout/Navbar";
-// import Footer from "../component/Layout/Footer";
-
+import Footer from "../component/Layout/Footer";
 
 function Daynamicproduct() {
   return (
-    <div className="pt-48 md:pt-20 -mt-1 mb-24">
-      <Navbar show={7}/>
-
-<Productdynamic
-  />
-
+    <div className="pt-28 md:pt-32 bg-gray-50/50 min-h-screen flex flex-col justify-between">
+      <Navbar show={7} />
+      <div className="flex-1">
+        <Productdynamic />
+      </div>
+      <Footer />
     </div>
-  )
+  );
 }
 
-export default Daynamicproduct
-
+export default Daynamicproduct;

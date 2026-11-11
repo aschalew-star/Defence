@@ -1,3 +1,4 @@
+import { server } from "../../server";
 import React, { useState, useEffect } from "react";
 import { useSearchParams,useParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -39,7 +40,7 @@ function SSeccess() {
     const verifyPayment = async () => {
       try {
         console.log("🔍 Verifying payment with tx_ref:", tx_ref);
-        const response = await axios.post("http://localhost:5000/payment/verify", { tx_ref });
+        const response = await axios.post(`${server}/payment/verify`, { tx_ref });
 
         if (response.data.status === "success") {
           // toast.success("✅ Payment successful! Order placed.");
@@ -57,7 +58,7 @@ function SSeccess() {
           console.log("📨 Sending final order to backend:", finalOrder);
 
           try {
-            const orderResponse = await axios.post("http://localhost:5000/order/create-order", finalOrder, {
+            const orderResponse = await axios.post(`${server}/order/create-order`, finalOrder, {
               headers: { "Content-Type": "application/json" },
             });
 

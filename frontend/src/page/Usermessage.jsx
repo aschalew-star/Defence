@@ -1,3 +1,4 @@
+import { server, socketServer } from "../server";
 import React,{ useEffect, useRef, useState} from 'react'
 import { useSelector } from "react-redux";
 import socketIO from "socket.io-client";
@@ -7,8 +8,8 @@ import { useNavigate } from "react-router-dom";
 import { AiOutlineArrowRight, AiOutlineSend } from "react-icons/ai";
 import { TfiGallery } from "react-icons/tfi";
 import Navbar from '../component/Layout/Navbar';
-const ENDPOINT = "http://localhost:4000";
-const socketId = socketIO(ENDPOINT, { transports: ["websocket"] });
+const ENDPOINT = socketServer;
+const socketId = socketIO(ENDPOINT, { transports: ["websocket", "polling"], withCredentials: true });
 
 function Usermessage() {
 
@@ -50,7 +51,7 @@ function Usermessage() {
     const getConversation = async () => {
       try {
         const resonse = await axios.get(
-          `http://localhost:5000/conversation/get-all-conversation-user/${user?._id}`,
+          `${server}/conversation/get-all-conversation-user/${user?._id}`,
           {
             withCredentials: true,
           }
@@ -87,7 +88,7 @@ function Usermessage() {
     const getMessage = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:5000/message/get-all-messages/${currentChat?._id}`
+          `${server}/message/get-all-messages/${currentChat?._id}`
         );
         setMessages(response.data.messages);
       } catch (error) {
@@ -119,7 +120,7 @@ const sendMessageHandler = async (e) => {
     try {
       if (newMessage !== "") {
         await axios
-          .post(`http://localhost:5000/message/create-new-message`, message)
+          .post(`${server}/message/create-new-message`, message)
           .then((res) => {
             setMessages([...messages, res.data.message]);
             updateLastMessage();
@@ -140,7 +141,7 @@ const sendMessageHandler = async (e) => {
     });
 
     await axios
-      .put(`http://localhost:5000/conversation/update-last-message/${currentChat._id}`, {
+      .put(`${server}/conversation/update-last-message/${currentChat._id}`, {
         lastMessage: newMessage,
         lastMessageId: user._id,
       })
@@ -180,7 +181,7 @@ const sendMessageHandler = async (e) => {
     try {
       await axios
         .post(
-          `http://localhost:5000/message/create-new-message`,
+          `${server}/message/create-new-message`,
           {
             images: e,
             sender: user._id,
@@ -200,7 +201,7 @@ const sendMessageHandler = async (e) => {
 
   const updateLastMessageForImage = async () => {
     await axios.put(
-      `http://localhost:5000/conversation/update-last-message/${currentChat._id}`,
+      `${server}/conversation/update-last-message/${currentChat._id}`,
       {
         lastMessage: "Photo",
         lastMessageId: user._id,
@@ -292,7 +293,7 @@ const MessageList = ({
       const userId = data.members.find((user) => user !== me);
       const getUser = async () => {
         try {
-          const res = await axios.get(`http://localhost:5000/shop/get-shop-info/${userId}`);
+          const res = await axios.get(`${server}/shop/get-shop-info/${userId}`);
           setUser(res.data.shop);
         } catch (error) {
           console.log(error);

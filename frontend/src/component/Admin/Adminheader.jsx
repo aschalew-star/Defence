@@ -1,155 +1,117 @@
 import React from "react";
-import { FiShoppingBag } from "react-icons/fi";
-import {GrWorkshop} from "react-icons/gr";
-import { RxDashboard } from "react-icons/rx";
-import { CiMoneyBill, CiSettings } from "react-icons/ci";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import {
+  RxDashboard,
+  RxPerson,
+} from "react-icons/rx";
+import {
+  FiShoppingBag,
+  FiPackage,
+  FiArrowLeft,
+} from "react-icons/fi";
+import { GrWorkshop } from "react-icons/gr";
 import { HiOutlineUserGroup } from "react-icons/hi";
-import { BsHandbag } from "react-icons/bs";
-import { MdOutlineLocalOffer } from "react-icons/md";
-import { AiOutlineSetting } from "react-icons/ai";
+import { CiMoneyBill } from "react-icons/ci";
+import { BsShieldCheck } from "react-icons/bs";
 
 const Adminsidebar = ({ active }) => {
+  const navItems = [
+    {
+      id: 1,
+      title: "Dashboard",
+      icon: RxDashboard,
+      link: "/AdminDashboard",
+    },
+    {
+      id: 2,
+      title: "All Orders",
+      icon: FiShoppingBag,
+      link: "/Adminallorder",
+    },
+    {
+      id: 3,
+      title: "Artisans & Sellers",
+      icon: GrWorkshop,
+      link: "/Allseller",
+    },
+    {
+      id: 4,
+      title: "Marketplace Users",
+      icon: HiOutlineUserGroup,
+      link: "/Alluser",
+    },
+    {
+      id: 5,
+      title: "All Crafts & Products",
+      icon: FiPackage,
+      link: "/AdminAllproduct",
+    },
+    {
+      id: 7,
+      title: "Merchant Withdrawals",
+      icon: CiMoneyBill,
+      link: "/admin-withdraw-request",
+    },
+  ];
+
   return (
-    <div className="w-full h-[90vh] bg-white shadow-sm overflow-y-scroll mt-4 sticky top-0 left-0 z-10">
-    {/* single item */}
-    <div className="w-full flex items-center p-2">
-      <Link to="/AdminDashboard" className="w-full flex items-center">
-        <RxDashboard
-          size={30}
-          color={`${active === 1 ? "crimson" : "#555"}`}
-        />
-        <h5
-          className={`hidden 800px:block pl-2 text-[18px] font-[400] ${
-            active === 1 ? "text-[crimson]" : "text-[#555]"
-          }`}
+    <aside className="w-full h-full min-h-[calc(100vh-80px)] bg-white border-r border-stone-200 py-6 px-3 flex flex-col justify-between select-none">
+      <div className="space-y-6">
+        {/* Admin Brand / Badge */}
+        <div className="px-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-serif font-bold text-sm shadow-sm">
+              M
+            </div>
+            <div className="hidden md:block">
+              <div className="text-xs font-bold uppercase tracking-wider text-stone-900 flex items-center gap-1.5">
+                MEP Admin <BsShieldCheck className="text-emerald-700" size={13} />
+              </div>
+              <div className="text-[11px] text-stone-500">Marketplace Control Panel</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation List */}
+        <nav className="space-y-1.5">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = active === item.id;
+            return (
+              <Link
+                key={item.id}
+                to={item.link}
+                className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all group ${
+                  isActive
+                    ? "bg-emerald-700 text-white shadow-sm"
+                    : "text-stone-700 hover:bg-stone-100 hover:text-stone-900"
+                }`}
+                title={item.title}
+              >
+                <Icon
+                  size={20}
+                  className={`flex-shrink-0 transition-transform group-hover:scale-110 ${
+                    isActive ? "text-white" : "text-stone-500 group-hover:text-stone-900"
+                  }`}
+                />
+                <span className="hidden md:inline-block truncate">{item.title}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Footer Switcher */}
+      <div className="pt-6 border-t border-stone-200 space-y-2">
+        <Link
+          to="/"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-100 hover:text-stone-900 transition-all"
         >
-          Dashboard
-        </h5>
-      </Link>
-    </div>
-
-    <div className="w-full flex items-center p-2">
-      <Link to="/Adminallorder" className="w-full flex items-center">
-        <FiShoppingBag
-          size={30}
-          color={`${active === 2 ? "crimson" : "#555"}`}
-        />
-        <h5
-          className={`hidden 800px:block pl-2 text-[18px] font-[400] ${
-            active === 2 ? "text-[crimson]" : "text-[#555]"
-          }`}
-        >
-          All Orders
-        </h5>
-      </Link>
-    </div>
-
-    <div className="w-full flex items-center p-2">
-      <Link to="/Allseller" className="w-full flex items-center">
-        <GrWorkshop
-          size={30}
-          color={`${active === 3 ? "crimson" : "#555"}`}
-        />
-        <h5
-          className={`hidden 800px:block pl-2 text-[18px] font-[400] ${
-            active === 3 ? "text-[crimson]" : "text-[#555]"
-          }`}
-        >
-          All Sellers
-        </h5>
-      </Link>
-    </div>
-
-    <div className="w-full flex items-center p-2">
-      <Link to="/Alluser" className="w-full flex items-center">
-        <HiOutlineUserGroup
-          size={30}
-          color={`${active === 4 ? "crimson" : "#555"}`}
-        />
-        <h5
-          className={`hidden 800px:block pl-2 text-[18px] font-[400] ${
-            active === 4 ? "text-[crimson]" : "text-[#555]"
-          }`}
-        >
-          All Users
-        </h5>
-      </Link>
-    </div>
-
-    <div className="w-full flex items-center p-2">
-      <Link to="/AdminAllproduct" className="w-full flex items-center">
-        <BsHandbag
-          size={30}
-          color={`${active === 5 ? "crimson" : "#555"}`}
-        />
-        <h5
-          className={`hidden 800px:block pl-2 text-[18px] font-[400] ${
-            active === 5 ? "text-[crimson]" : "text-[#555]"
-          }`}
-        >
-          All Products
-        </h5>
-      </Link>
-    </div>
-
-    {/* <div className="w-full flex items-center p-4">
-      <Link to="/admin-events" className="w-full flex items-center">
-        <MdOutlineLocalOffer
-          size={30}
-          color={`${active === 6 ? "crimson" : "#555"}`}
-        />
-        <h5
-          className={`hidden 800px:block pl-2 text-[18px] font-[400] ${
-            active === 6 ? "text-[crimson]" : "text-[#555]"
-          }`}
-        >
-          All Events
-        </h5>
-      </Link>
-    </div> */}
-
-
-
-    {/* <div className="w-full flex items-center p-4">
-      <Link
-        to="/admin-withdraw-request"
-        className="w-full flex items-center"
-      >
-        <CiMoneyBill
-          size={30}
-          color={`${active === 7 ? "crimson" : "#555"}`}
-        />
-        <h5
-          className={`hidden 800px:block pl-2 text-[18px] font-[400] ${
-            active === 7 ? "text-[crimson]" : "text-[#555]"
-          }`}
-        >
-          Withdraw Request
-        </h5>
-      </Link>
-    </div> */}
-
-    <div className="w-full flex items-center p-2">
-      <Link
-        to="/profile"
-        className="w-full flex items-center"
-      >
-        <AiOutlineSetting
-          size={30}
-          color={`${active === 8 ? "crimson" : "#555"}`}
-        />
-        <h5
-          className={`hidden 800px:block pl-2 text-[18px] font-[400] ${
-            active === 8 ? "text-[crimson]" : "text-[#555]"
-          }`}
-        >
-          Settings
-        </h5>
-      </Link>
-    </div>
-
-  </div>
+          <FiArrowLeft size={18} className="flex-shrink-0" />
+          <span className="hidden md:inline-block">Back to Marketplace</span>
+        </Link>
+      </div>
+    </aside>
   );
 };
 

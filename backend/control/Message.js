@@ -1,6 +1,6 @@
 const Messages = require("../model/message");
 const handleerror = require("../utils/handleerror");
-const asynerror=require("../utils/asynerror")
+const asynerror = require("../utils/asynerror");
 const express = require("express");
 const cloudinary = require("cloudinary");
 const router = express.Router();
@@ -13,18 +13,18 @@ router.post(
       const messageData = req.body;
 
       if (req.body.images) {
-        const myCloud = await cloudinary.v2.uploader.upload(req.body.images, {
-          folder: "messages",
-        });
-        messageData.images = {
-          public_id: myCloud.public_id,
-          url: myCloud.url,
-        };
+        if (typeof req.body.images === "object" && req.body.images.url) {
+          messageData.images = req.body.images;
+        } else if (typeof req.body.images === "string") {
+          const myCloud = await cloudinary.v2.uploader.upload(req.body.images, {
+            folder: "messages",
+          });
+          messageData.images = {
+            public_id: myCloud.public_id,
+            url: myCloud.secure_url || myCloud.url,
+          };
+        }
       }
-
-      messageData.conversationId = req.body.conversationId;
-      messageData.sender = req.body.sender;
-      messageData.text = req.body.text;
 
       const message = new Messages({
         conversationId: messageData.conversationId,
@@ -40,7 +40,7 @@ router.post(
         message,
       });
     } catch (error) {
-      return next(new handleerror(error.message), 500);
+      return next(new handleerror(error.message, 500));
     }
   })
 );
@@ -52,14 +52,14 @@ router.get(
     try {
       const messages = await Messages.find({
         conversationId: req.params.id,
-      });
+      }).sort({ createdAt: 1 });
 
-      res.status(201).json({
+      res.status(200).json({
         success: true,
         messages,
       });
     } catch (error) {
-      return next(new handleerror(error.message), 500);
+      return next(new handleerror(error.message, 500));
     }
   })
 );

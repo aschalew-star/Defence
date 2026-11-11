@@ -1,71 +1,52 @@
 import React from "react";
+import { FiCheck, FiTruck, FiCreditCard, FiCheckCircle } from "react-icons/fi";
 
 const CheckoutSteps = ({ active }) => {
-  console.log(active);
+  const steps = [
+    { num: 1, label: "Shipping Info", icon: FiTruck },
+    { num: 2, label: "Payment", icon: FiCreditCard },
+    { num: 3, label: "Success", icon: FiCheckCircle },
+  ];
+
   return (
-    <div className="w-full flex items-center justify-center">
-      <div className="w-[90%] 800px:w-[50%] flex items-center justify-center flex-wrap">
-        <div className="flex items-center">
-          <div className="px-[20px] h-[38px] rounded-[20px] bg-[#f63b60] flex items-center justify-center cursor-pointer">
-            <span className="text-[#fff] text-[16px] font-[600]">
-              1.Shipping
-            </span>
-          </div>
-          <div
-            className={`${
-              active > 1
-                ? "w-[30px] 800px:w-[70px] h-[4px] !bg-[#f63b60]"
-                : "w-[30px] 800px:w-[70px] h-[4px] !bg-[#FDE1E6]"
-            }`}
-          />
-        </div>
+    <div className="w-full flex items-center justify-center py-6">
+      <div className="flex items-center gap-3 sm:gap-6">
+        {steps.map((step, idx) => {
+          const isDone = active > step.num;
+          const isCurrent = active === step.num;
+          const Icon = step.icon;
 
-        <div className="flex items-center">
-          <div
-            className={`${
-              active > 1
-                ? `px-[20px] h-[38px] rounded-[20px] bg-[#f63b60] flex items-center justify-center cursor-pointer`
-                : ` !bg-[#FDE1E6]`
-            }`}
-          >
-            <span
-              className={`${
-                active > 1
-                  ? `text-[#fff] text-[16px] font-[600]`
-                  : ` !text-[#f63b60]`
-              }`}
-            >
-              2.Payment
-            </span>
-          </div>
-        </div>
+          return (
+            <React.Fragment key={step.num}>
+              {/* Step Pill */}
+              <div
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-bold transition shadow-sm ${
+                  isDone
+                    ? "bg-emerald-600 text-white"
+                    : isCurrent
+                    ? "bg-amber-800 text-white shadow"
+                    : "bg-gray-100 text-gray-400"
+                }`}
+              >
+                {isDone ? (
+                  <FiCheck className="text-sm" />
+                ) : (
+                  <Icon className="text-sm" />
+                )}
+                <span>{step.label}</span>
+              </div>
 
-        <div className="flex items-center">
-          <div
-            className={`${
-              active > 3
-                ? "w-[30px] 800px:w-[70px] h-[4px] !bg-[#f63b60]"
-                : "w-[30px] 800px:w-[70px] h-[4px] !bg-[#FDE1E6]"
-            }`}
-          />
-          <div
-            className={`${
-              active > 2
-                ? `px-[20px] h-[38px] rounded-[20px] bg-[#f63b60] flex items-center justify-center cursor-pointer`
-                : ` !bg-[#FDE1E6]`
-            }`}
-          >
-            <span
-              className={`${
-                active > 2
-                  ? `text-[#fff] text-[16px] font-[600]`
-                  : ` !text-[#f63b60]`
-              }`}
-            >
-              3.Success
-            </span>
-          </div>
-        </div>
+              {/* Connecting Line */}
+              {idx < steps.length - 1 && (
+                <div
+                  className={`w-8 sm:w-16 h-1 rounded-full transition ${
+                    active > step.num ? "bg-emerald-500" : "bg-gray-200"
+                  }`}
+                />
+              )}
+            </React.Fragment>
+          );
+        })}
       </div>
     </div>
   );

@@ -1,17 +1,31 @@
-const socketIO = require("socket.io");
-const http = require("http");
-const express = require("express");
-const cors = require("cors");
-const app = express();
-const server = http.createServer(app);
-const io = socketIO(server);
-
 require("dotenv").config({
   path: "./.env",
 });
 
+const http = require("http");
+const express = require("express");
+const cors = require("cors");
+const socketIO = require("socket.io");
+
+const app = express();
+const server = http.createServer(app);
+
+const clientOrigin = process.env.CLIENT_URL || "http://localhost:3000";
+
+const io = socketIO(server, {
+  cors: {
+    origin: [clientOrigin, "http://localhost:3000", "http://localhost:8081"],
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
+
 app.use(cors());
 app.use(express.json());
+
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", timestamp: new Date() });
+});
 
 app.get("/", (req, res) => {
   res.send("Hello world from socket server!");
@@ -20,8 +34,13 @@ app.get("/", (req, res) => {
 let users = [];
 
 const addUser = (userId, socketId) => {
-  !users.some((user) => user.userId === userId) &&
+  if (!userId) return;
+  const existingUserIndex = users.findIndex((user) => user.userId === userId);
+  if (existingUserIndex !== -1) {
+    users[existingUserIndex].socketId = socketId;
+  } else {
     users.push({ userId, socketId });
+  }
 };
 
 const removeUser = (socketId) => {
@@ -39,60 +58,57 @@ const createMessage = ({ senderId, receiverId, text, images }) => ({
   text,
   images,
   seen: false,
+  createdAt: Date.now(),
 });
 
 io.on("connection", (socket) => {
-  // when connect
-  console.log(`a user is connected`);
+  console.log(`Socket user connected: ${socket.id}`);
 
-  // take userId and socketId from user
+  // Take userId and socketId from user
   socket.on("addUser", (userId) => {
     addUser(userId, socket.id);
     io.emit("getUsers", users);
   });
 
-  // send and get message
-  const messages = {}; // Object to track messages sent to each user
+  // Messages cache by receiverId
+  const messages = {};
 
   socket.on("sendMessage", ({ senderId, receiverId, text, images }) => {
     const message = createMessage({ senderId, receiverId, text, images });
-
     const user = getUser(receiverId);
 
-    // Store the messages in the `messages` object
     if (!messages[receiverId]) {
       messages[receiverId] = [message];
     } else {
       messages[receiverId].push(message);
     }
 
-    // send the message to the recevier
-    io.to(user?.socketId).emit("getMessage", message);
+    if (user && user.socketId) {
+      io.to(user.socketId).emit("getMessage", message);
+    }
   });
 
   socket.on("messageSeen", ({ senderId, receiverId, messageId }) => {
     const user = getUser(senderId);
 
-    // update the seen flag for the message
     if (messages[senderId]) {
       const message = messages[senderId].find(
-        (message) =>
-          message.receiverId === receiverId && message.id === messageId
+        (m) => m.receiverId === receiverId && (m.id === messageId || m._id === messageId)
       );
       if (message) {
         message.seen = true;
-
-        // send a message seen event to the sender
-        io.to(user?.socketId).emit("messageSeen", {
-          senderId,
-          receiverId,
-          messageId,
-        });
       }
+    }
+
+    if (user && user.socketId) {
+      io.to(user.socketId).emit("messageSeen", {
+        senderId,
+        receiverId,
+        messageId,
+      });
     }
   });
 
-  // update and get last message
   socket.on("updateLastMessage", ({ lastMessage, lastMessagesId }) => {
     io.emit("getLastMessage", {
       lastMessage,
@@ -100,14 +116,14 @@ io.on("connection", (socket) => {
     });
   });
 
-  //when disconnect
   socket.on("disconnect", () => {
-    console.log(`a user disconnected!`);
+    console.log(`Socket user disconnected: ${socket.id}`);
     removeUser(socket.id);
     io.emit("getUsers", users);
   });
 });
 
-server.listen(process.env.PORT || 4000, () => {
-  console.log(`server is running on port ${process.env.PORT || 4000}`);
+const PORT = process.env.PORT || 4000;
+server.listen(PORT, () => {
+  console.log(`Socket server is running on port ${PORT}`);
 });

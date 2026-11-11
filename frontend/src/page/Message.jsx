@@ -1,3 +1,4 @@
+import { server, socketServer } from "../server";
 import axios from "axios";
 import React, { useRef, useState } from "react";
 import { useEffect } from "react";
@@ -8,8 +9,8 @@ import { TfiGallery } from "react-icons/tfi";
 import socketIO from "socket.io-client";
 import { format } from "timeago.js";
 import Navbar from "../component/Layout/Navbar";
-const ENDPOINT = "http://localhost:4000";
-const socketId = socketIO(ENDPOINT, { transports: ["websocket"] });
+const ENDPOINT = socketServer;
+const socketId = socketIO(ENDPOINT, { transports: ["websocket", "polling"], withCredentials: true });
 
 
 const DashboardMessages = () => {
@@ -46,7 +47,7 @@ const DashboardMessages = () => {
     const getConversation = async () => {
       try {
         const resonse = await axios.get(
-          `http://localhost:5000/conversation/get-all-conversation-seller/${seller?._id}`,
+          `${server}/conversation/get-all-conversation-seller/${seller?._id}`,
           {
             withCredentials: true,
           }
@@ -82,7 +83,7 @@ const DashboardMessages = () => {
     const getMessage = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:5000/message/get-all-messages/${currentChat?._id}`
+          `${server}/message/get-all-messages/${currentChat?._id}`
         );
         setMessages(response.data.messages);
       } catch (error) {
@@ -114,7 +115,7 @@ const DashboardMessages = () => {
     try {
       if (newMessage !== "") {
         await axios
-          .post(`http://localhost:5000/message/create-new-message`, message)
+          .post(`${server}/message/create-new-message`, message)
           .then((res) => {
             setMessages([...messages, res.data.message]);
             updateLastMessage();
@@ -135,7 +136,7 @@ const DashboardMessages = () => {
     });
 
     await axios
-      .put(`http://localhost:5000/conversation/update-last-message/${currentChat._id}`, {
+      .put(`${server}/conversation/update-last-message/${currentChat._id}`, {
         lastMessage: newMessage,
         lastMessageId: seller._id,
       })
@@ -174,7 +175,7 @@ const DashboardMessages = () => {
 
     try {
       await axios
-        .post(`http://localhost:5000/message/create-new-message`, {
+        .post(`${server}/message/create-new-message`, {
           images: e,
           sender: seller._id,
           text: newMessage,
@@ -192,7 +193,7 @@ const DashboardMessages = () => {
 
   const updateLastMessageForImage = async () => {
     await axios.put(
-      `http://localhost:5000/conversation/update-last-message/${currentChat._id}`,
+      `${server}/conversation/update-last-message/${currentChat._id}`,
       {
         lastMessage: "Photo",
         lastMessageId: seller._id,
@@ -278,7 +279,7 @@ const MessageList = ({
 
     const getUser = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/user/user-info/${userId}`);
+        const res = await axios.get(`${server}/user/user-info/${userId}`);
         setUser(res.data.user);
       } catch (error) {
         console.log(error);
@@ -341,7 +342,6 @@ const SellerInbox = ({
 }) => {
   return (
     <>
-                <Navbar show={7}/>
 
     <div className="w-full min-h-full flex flex-col justify-between mt-40 md:mt-6">
       {/* message header */}

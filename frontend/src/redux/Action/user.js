@@ -1,4 +1,5 @@
 import axios from "axios";
+import { server } from "../../server";
 
 // load user
 export const loadUser = () => async (dispatch) => {
@@ -6,7 +7,7 @@ export const loadUser = () => async (dispatch) => {
     dispatch({
       type: "LoadUserRequest",
     });
-    const { data } = await axios.get("http://localhost:5000/user/getuser", {
+    const { data } = await axios.get(`${server}/user/getuser`, {
       withCredentials: true,
     });
     dispatch({
@@ -16,7 +17,7 @@ export const loadUser = () => async (dispatch) => {
   } catch (error) {
     dispatch({
       type: "LoadUserFail",
-      payload: error.response.data.message,
+      payload: error.response?.data?.message || error.message,
     });
   }
 };
@@ -27,10 +28,9 @@ export const loadSeller = () => async (dispatch) => {
     dispatch({
       type: "LoadSellerRequest",
     });
-    const { data } = await axios.get("http://localhost:5000/shop/getSeller", {
+    const { data } = await axios.get(`${server}/shop/getSeller`, {
       withCredentials: true,
     });
-    console.log(data);
     dispatch({
       type: "LoadSellerSuccess",
       payload: data.seller,
@@ -38,7 +38,7 @@ export const loadSeller = () => async (dispatch) => {
   } catch (error) {
     dispatch({
       type: "LoadSellerFail",
-      payload: error.response.data.message,
+      payload: error.response?.data?.message || error.message,
     });
   }
 };
@@ -52,7 +52,7 @@ export const updateUserInformation =
       });
 
       const { data } = await axios.put(
-        "",
+        `${server}/user/update-user-info`,
         {
           email,
           password,
@@ -61,9 +61,6 @@ export const updateUserInformation =
         },
         {
           withCredentials: true,
-          headers: {
-            "Access-Control-Allow-Credentials": true,
-          },
         }
       );
 
@@ -74,7 +71,7 @@ export const updateUserInformation =
     } catch (error) {
       dispatch({
         type: "updateUserInfoFailed",
-        payload: error.response.data.message,
+        payload: error.response?.data?.message || error.message,
       });
     }
   };
@@ -89,7 +86,7 @@ export const updatUserAddress =
       });
 
       const { data } = await axios.put(
-        "",
+        `${server}/user/update-user-addresses`,
         {
           country,
           city,
@@ -104,14 +101,14 @@ export const updatUserAddress =
       dispatch({
         type: "updateUserAddressSuccess",
         payload: {
-          successMessage: "User address updated succesfully!",
+          successMessage: "User address updated successfully!",
           user: data.user,
         },
       });
     } catch (error) {
       dispatch({
         type: "updateUserAddressFailed",
-        payload: error.response.data.message,
+        payload: error.response?.data?.message || error.message,
       });
     }
   };
@@ -123,19 +120,22 @@ export const deleteUserAddress = (id) => async (dispatch) => {
       type: "deleteUserAddressRequest",
     });
 
-    const { data } = await axios.delete("", { withCredentials: true });
+    const { data } = await axios.delete(
+      `${server}/user/delete-user-address/${id}`,
+      { withCredentials: true }
+    );
 
     dispatch({
       type: "deleteUserAddressSuccess",
       payload: {
-        successMessage: "User deleted successfully!",
+        successMessage: "User address deleted successfully!",
         user: data.user,
       },
     });
   } catch (error) {
     dispatch({
       type: "deleteUserAddressFailed",
-      payload: error.response.data.message,
+      payload: error.response?.data?.message || error.message,
     });
   }
 };
@@ -147,7 +147,7 @@ export const getAllUsers = () => async (dispatch) => {
       type: "getAllUsersRequest",
     });
 
-    const { data } = await axios.get(`http://localhost:5000/user/admin-all-users`, {
+    const { data } = await axios.get(`${server}/user/admin-all-users`, {
       withCredentials: true,
     });
 
@@ -158,7 +158,7 @@ export const getAllUsers = () => async (dispatch) => {
   } catch (error) {
     dispatch({
       type: "getAllUsersFailed",
-      payload: error.response.data.message,
+      payload: error.response?.data?.message || error.message,
     });
   }
 };

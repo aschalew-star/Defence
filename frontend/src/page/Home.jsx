@@ -6,14 +6,13 @@ import Footer from "../component/Layout/Footer";
 
 function Home() {
   return (
-    <div className='className=" pt-36 mt-4 md:mt-0 md:pt-12'>
+    <div className="pt-28 md:pt-32 bg-gray-50/50 min-h-screen">
       <Navbar active={1} />
       <Hero />
       <Moretolove />
-      <Footer/>
+      <Footer />
     </div>
   );
 }
 
 export default Home;
-

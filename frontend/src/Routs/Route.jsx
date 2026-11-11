@@ -12,12 +12,25 @@ import Seccess from '../page/Seccess';
 import Daynamicproduct from '../page/Daynamicproduct';
 import Faq from '../page/Faq';
 import Orders from '../page/Orders';
+import ProductDetailsPage from '../page/ProductDetailsPage';
+import EventDetailsPage from '../page/EventDetailsPage';
+import ProfilePage from '../page/ProfilePage';
 
-export  {
-
-Faq,
-Home,LoginPage,Signuppage,CartPage,Checkoutpage,Product,Wishpage,Payments,Event,Seccess,
-Orders,
-Daynamicproduct,
-
+export {
+  Faq,
+  Home,
+  LoginPage,
+  Signuppage,
+  CartPage,
+  Checkoutpage,
+  Product,
+  Wishpage,
+  Payments,
+  Event,
+  EventDetailsPage,
+  Seccess,
+  Orders,
+  Daynamicproduct,
+  ProductDetailsPage,
+  ProfilePage,
 };

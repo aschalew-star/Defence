@@ -1,13 +1,17 @@
 import axios from "axios";
+import { server } from "../../server";
 
 // get all orders of user
 export const getAllOrdersOfUser = (userId) => async (dispatch) => {
+  if (!userId) return;
   try {
     dispatch({
       type: "getAllOrdersUserRequest",
     });
 
-    const { data } = await axios.get(""
+    const { data } = await axios.get(
+      `${server}/order/get-all-orders/${userId}`,
+      { withCredentials: true }
     );
 
     dispatch({
@@ -17,21 +21,22 @@ export const getAllOrdersOfUser = (userId) => async (dispatch) => {
   } catch (error) {
     dispatch({
       type: "getAllOrdersUserFailed",
-      payload: error.response.data.message,
+      payload: error.response?.data?.message || error.message,
     });
   }
 };
 
 // get all orders of seller
 export const getAllOrdersOfShop = (shopId) => async (dispatch) => {
+  if (!shopId) return;
   try {
     dispatch({
       type: "getAllOrdersShopRequest",
     });
 
     const { data } = await axios.get(
-      `http://localhost:5000/order/get-seller-all-orders/${shopId}`
-
+      `${server}/order/get-seller-all-orders/${shopId}`,
+      { withCredentials: true }
     );
 
     dispatch({
@@ -41,7 +46,7 @@ export const getAllOrdersOfShop = (shopId) => async (dispatch) => {
   } catch (error) {
     dispatch({
       type: "getAllOrdersShopFailed",
-      payload: error.response.data.message,
+      payload: error.response?.data?.message || error.message,
     });
   }
 };
@@ -53,11 +58,9 @@ export const getAllOrdersOfAdmin = () => async (dispatch) => {
       type: "adminAllOrdersRequest",
     });
 
-    const { data } = await axios.get("http://localhost:5000/order/admin-all-orders", {
+    const { data } = await axios.get(`${server}/order/admin-all-orders`, {
       withCredentials: true,
     });
-
-    console.log(data);
 
     dispatch({
       type: "adminAllOrdersSuccess",
@@ -66,7 +69,7 @@ export const getAllOrdersOfAdmin = () => async (dispatch) => {
   } catch (error) {
     dispatch({
       type: "adminAllOrdersFailed",
-      payload: error.response.data.message,
+      payload: error.response?.data?.message || error.message,
     });
   }
 };

@@ -1,23 +1,22 @@
-import React from "react";
-import Navbar from "../../component/Layout/Navbar";
+﻿import React from "react";
+import MerchantNavbar from "../../component/shop/MerchantNavbar";
 import DashboardSideBar from "../../component/shop/DashboardSideBar";
-import CreateEvent from "../../component/shop/Eventcreate"
+import CreateEvent from "../../component/shop/Eventcreate";
 
-function Dashbord() {
+function CreateEventPage() {
   return (
-    <div className="pt-48 md:pt-28 -mt-1">
-      <Navbar show={7} />
-      <div className="flex items-center justify-between w-full">
-            <div className="w-[80px] 800px:w-[330px]">
-              <DashboardSideBar active={6} />
-            </div>
-            <div className="w-full justify-center pt-10 flex">
-                <CreateEvent/>
-            </div>
-          </div>
+    <div className="min-h-screen bg-stone-50">
+      <MerchantNavbar />
+      <div className="flex w-full pt-16">
+        <div className="w-[72px] md:w-[270px] flex-shrink-0">
+          <DashboardSideBar active={6} />
+        </div>
+        <div className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 overflow-hidden flex justify-center">
+          <CreateEvent />
+        </div>
+      </div>
     </div>
   );
 }
 
-export default Dashbord;
-
+export default CreateEventPage;

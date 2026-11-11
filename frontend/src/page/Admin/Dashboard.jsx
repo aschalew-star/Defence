@@ -1,25 +1,22 @@
-import React from 'react'
-import Navbar from '../../component/Layout/Navbar';
-import Adminsidebar from '../../component/Admin/Adminheader';
-import AdminDashboardMain from '../../component/Admin/Admindashbord';
+import React from "react";
+import AdminNavbar from "../../component/Admin/AdminNavbar";
+import Adminsidebar from "../../component/Admin/Adminheader";
+import AdminDashboardMain from "../../component/Admin/Admindashbord";
+
 function AdminDashboard() {
   return (
-    <div  className="pt-48 md:pt-16 -mt-1">
-        <Navbar/>
-        <div className="flex  w-full mt-5">
-        <div className="w-[80px] 800px:w-[330px]">
-          <Adminsidebar active={1} className="" />
+    <div className="min-h-screen bg-stone-50">
+      <AdminNavbar />
+      <div className="flex w-full pt-16">
+        <div className="w-[72px] md:w-[270px] flex-shrink-0">
+          <Adminsidebar active={1} />
         </div>
-        <div className=" ml-[1px] 800px:ml-[50px]">
-         <AdminDashboardMain
- /> 
+        <div className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 overflow-hidden">
+          <AdminDashboardMain />
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default AdminDashboard
-
-
-
+export default AdminDashboard;

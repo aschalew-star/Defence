@@ -1,72 +1,106 @@
 const mongoose = require("mongoose");
 
-const eventSchema = new mongoose.Schema({
-    name:{
-        type: String,
-        required:[true,"Please enter your event product name!"],
+const eventSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, "Please enter your event product name!"],
+      trim: true,
     },
-    description:{
-        type: String,
-        required:[true,"Please enter your event product description!"],
+    description: {
+      type: String,
+      required: [true, "Please enter your event product description!"],
     },
-    category:{
-        type: String,
-        required:[true,"Please enter your event product category!"],
+    category: {
+      type: String,
+      required: [true, "Please enter your event product category!"],
+      index: true,
     },
     start_Date: {
-        type: Date,
-        required: true,
-      },
-      Finish_Date: {
-        type: Date,
-        required: true,
-      },
-      status: {
-        type: String,
-        default: "Running",
-      },
-    tags:{
-        type: String,
+      type: Date,
+      required: true,
     },
-    originalPrice:{
-        type: Number,
+    Finish_Date: {
+      type: Date,
+      required: true,
     },
-    discountPrice:{
-        type: Number,
-        required: [true,"Please enter your event product price!"],
+    status: {
+      type: String,
+      enum: ["Running", "Expired", "Upcoming", "Paused"],
+      default: "Running",
+      index: true,
     },
-    stock:{
-        type: Number,
-        required: [true,"Please enter your event product stock!"],
+    tags: {
+      type: String,
+      index: true,
     },
-    images:[
-        {
-            public_id: {
-                type: String,
-                required: true,
-              },
-              url: {
-                type: String,
-                required: true,
-              },
+    originalPrice: {
+      type: Number,
+    },
+    discountPrice: {
+      type: Number,
+      required: [true, "Please enter your event product price!"],
+    },
+    stock: {
+      type: Number,
+      required: [true, "Please enter your event product stock!"],
+    },
+    sizes: {
+      type: [String],
+      default: ["S", "M", "L", "XL", "Custom Sizing"],
+    },
+    colors: {
+      type: [String],
+      default: [],
+    },
+    isCustomizable: {
+      type: Boolean,
+      default: false,
+    },
+    productionTime: {
+      type: Number,
+      default: 3,
+    },
+    images: [
+      {
+        public_id: {
+          type: String,
+          required: true,
         },
+        url: {
+          type: String,
+          required: true,
+        },
+        isFeatured: {
+          type: Boolean,
+          default: false,
+        },
+      },
     ],
-    shopId:{
-        type: String,
-        required: true,
+    featuredImage: {
+      public_id: { type: String },
+      url: { type: String },
     },
-    shop:{
-        type: Object,
-        required: true,
+    shopId: {
+      type: String,
+      required: true,
+      index: true,
     },
-    sold_out:{
-        type: Number,
-        default: 0,
+    shop: {
+      type: Object, // Denormalized snapshot
+      required: true,
     },
-    createdAt:{
-        type: Date,
-        default: Date.now(),
-    }
-});
+    shopRef: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Shop",
+      index: true,
+    },
+    sold_out: {
+      type: Number,
+      default: 0,
+    },
+  },
+  { timestamps: true }
+);
 
 module.exports = mongoose.model("Event", eventSchema);

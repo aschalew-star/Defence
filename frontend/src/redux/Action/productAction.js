@@ -1,28 +1,45 @@
 import axios from "axios";
-// import Productdata from "../../static/Productdata";
+import { server } from "../../server";
 
-export const fechAllProducts = () => async (dispatch) => {
+export const fechAllProducts = (params = {}) => async (dispatch) => {
   dispatch({ type: "getAllProductRequest" });
 
   try {
-    
-    const { data } = await axios.get(
-      "http://localhost:5000/product/get-all-products")
+    const query = new URLSearchParams();
+    if (params.page) query.append("page", params.page);
+    if (params.limit) query.append("limit", params.limit);
+    if (params.category && params.category !== "all" && params.category !== "All") {
+      query.append("category", params.category);
+    }
+    if (params.keyword) query.append("keyword", params.keyword);
+    if (params.sort) query.append("sort", params.sort);
+    if (params.minPrice) query.append("minPrice", params.minPrice);
+    if (params.maxPrice) query.append("maxPrice", params.maxPrice);
+    if (params.ratings) query.append("ratings", params.ratings);
 
-    dispatch({ type: "getAllProductSuccess", payload : data.products });
-    // console.log(data.products);
+    const queryString = query.toString() ? `?${query.toString()}` : "";
+    const { data } = await axios.get(`${server}/product/get-all-products${queryString}`);
+
+    dispatch({
+      type: "getAllProductSuccess",
+      payload: data.products,
+      totalProducts: data.totalProducts,
+      page: data.page,
+      pages: data.pages,
+      limit: data.limit,
+    });
   } catch (error) {
-    dispatch({ type: "getAllProductFail", payload : error.message });
+    dispatch({
+      type: "getAllProductFail",
+      payload: error.response?.data?.message || error.message,
+    });
   }
 };
-
-
-
 
 // create product
 export const createProduct =
   (
-    name,
+    productDataOrName,
     description,
     category,
     tags,
@@ -38,33 +55,45 @@ export const createProduct =
         type: "productCreateRequest",
       });
 
+      let payload;
+      if (typeof productDataOrName === "object" && productDataOrName !== null) {
+        payload = productDataOrName;
+      } else {
+        payload = {
+          name: productDataOrName,
+          description,
+          category,
+          tags,
+          originalPrice,
+          discountPrice,
+          stock,
+          shopId,
+          images,
+        };
+      }
+
       const { data } = await axios.post(
-       "http://localhost:5000/product/create-product",
-        name,
-        description,
-        category,
-        tags,
-        originalPrice,
-        discountPrice,
-        stock,
-        shopId,
-        images,
+        `${server}/product/create-product`,
+        payload,
+        {
+          headers: { "Content-Type": "application/json" },
+          withCredentials: true,
+        }
       );
+
       dispatch({
         type: "productCreateSuccess",
         payload: data.product,
       });
-      console.log(data.product);
     } catch (error) {
       dispatch({
         type: "productCreateFail",
-        payload: error.response.data.message,
+        payload: error.response?.data?.message || error.message,
       });
-      console.log(error.response.data.message);
     }
   };
 
-// get All Products of a shop
+// get all products of a shop
 export const getAllProductsShop = (id) => async (dispatch) => {
   try {
     dispatch({
@@ -72,20 +101,17 @@ export const getAllProductsShop = (id) => async (dispatch) => {
     });
 
     const { data } = await axios.get(
-      `http://localhost:5000/product/get-all-products-shop/${id}`);
+      `${server}/product/get-all-products-shop/${id}`
+    );
+
     dispatch({
       type: "getAllProductsShopSuccess",
       payload: data.products,
     });
-    
-
-    console.log(data);
-    
-
   } catch (error) {
     dispatch({
       type: "getAllProductsShopFailed",
-      payload: error.response.data.message,
+      payload: error.response?.data?.message || error.message,
     });
   }
 };
@@ -98,25 +124,22 @@ export const deleteProduct = (id) => async (dispatch) => {
     });
 
     const { data } = await axios.delete(
-      `http://localhost:5000/product/delete-shop-product/${id}`,
-
-
+      `${server}/product/delete-shop-product/${id}`,
       {
         withCredentials: true,
       }
     );
+
     dispatch({
       type: "deleteProductSuccess",
       payload: data.message,
     });
-
-    console.log(data.message);
   } catch (error) {
     dispatch({
       type: "deleteProductFailed",
-      payload: error.response.data.message,
+      payload: error.response?.data?.message || error.message,
     });
   }
 };
 
-
+export default fechAllProducts;

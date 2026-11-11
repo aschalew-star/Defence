@@ -1,3 +1,4 @@
+import { server } from "../../server";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
@@ -33,12 +34,12 @@ const Payment = () => {
     // setLoading(true);
     e.preventDefault();
     const tx_ref = "tx-" + Date.now();
-    const return_url = `http://localhost:3000/Seccess/${tx_ref}`;
+    const return_url = `${window.location.origin}/Seccess/${tx_ref}`;
 
     console.log(user.email, order.totalPrice, user.name);
 
     try {
-      const response = await axios.post("http://localhost:5000/payment/init", {
+      const response = await axios.post(`${server}/payment/init`, {
         amount: order.totalPrice,
         currency: "ETB",
         // email: user.email, // Only email required, no login needed
@@ -76,7 +77,7 @@ const Payment = () => {
     };
 
     await axios
-      .post("http://localhost:5000/order/create-order", order, config)
+      .post(`${server}/order/create-order`, order, config)
       .then((res) => {
         setOpen(false);
         localStorage.setItem("cartItems", JSON.stringify([]));

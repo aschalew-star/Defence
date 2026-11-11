@@ -1,51 +1,96 @@
-const ErrorHandler = require("./catchAsynErrors");
+const handleerror = require("../utils/handleerror");
 const catchAsyncErrors = require("../utils/asynerror");
 const jwt = require("jsonwebtoken");
 const User = require("../model/user");
-const Shop = require("../model/shop");
+const Shop = require("../model/Shop");
 
-exports.isAuthenticated = catchAsyncErrors(async(req,res,next) => {
-    const {token} = req.cookies;
+const getSecret = () => process.env.JWT_SECRET || "Secret";
 
-    if(!token){
-        return next(new ErrorHandler("Please login to continue", 401));
-    }
+// Extract token from cookie or Authorization header
+const extractToken = (req, cookieName) => {
+  if (req.cookies && req.cookies[cookieName]) {
+    return req.cookies[cookieName];
+  }
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    return authHeader.split(" ")[1];
+  }
+  return null;
+};
 
-    const decoded = jwt.verify(token, "Secret");
+exports.isAuthenticated = catchAsyncErrors(async (req, res, next) => {
+  const token = extractToken(req, "token");
 
-    req.user = await User.findById(decoded.id);
+  if (!token) {
+    return next(new handleerror("Please login to access this resource", 401));
+  }
 
-    next();
+  let decoded;
+  try {
+    decoded = jwt.verify(token, getSecret());
+  } catch (err) {
+    return next(new handleerror("Invalid or expired session. Please login again.", 401));
+  }
+
+  req.user = await User.findById(decoded.id);
+
+  if (!req.user) {
+    return next(new handleerror("User not found with this session", 401));
+  }
+
+  next();
 });
 
+exports.isSeller = catchAsyncErrors(async (req, res, next) => {
+  const sellerToken = extractToken(req, "seller_token");
 
-exports.isSeller = catchAsyncErrors(async(req,res,next) => {
+  if (!sellerToken) {
+    return next(new handleerror("Please login as a merchant to continue", 401));
+  }
 
-    const {seller_token} = req.cookies;
+  let decoded;
+  try {
+    decoded = jwt.verify(sellerToken, getSecret());
+  } catch (err) {
+    return next(new handleerror("Invalid or expired merchant session. Please login again.", 401));
+  }
 
-    // console.log(seller_token);
-    
-    if(!seller_token){
-        return next(new ErrorHandler("Please login to continue", 401));
-    }
-    
-    const decoded = jwt.verify(seller_token, "Secret");
-    
-    req.seller = await Shop.findById(decoded.id);
-    
-    // console.log(req.seller);
+  req.seller = await Shop.findById(decoded.id);
 
-    next();
+  if (!req.seller) {
+    return next(new handleerror("Merchant store not found with this session", 401));
+  }
+
+  next();
 });
-
 
 exports.isAdmin = (...roles) => {
-    return (req,res,next) => {
-        if(!roles.includes(req.user.role)){
-            return next(new ErrorHandler(`${req.user.role} can not access this resources!`))
-        };
-        next();
+  const allowed = roles.length > 0 ? roles : ["admin", "superadmin"];
+  return (req, res, next) => {
+    const userRole = req.user?.role;
+    if (!userRole || !allowed.includes(userRole)) {
+      return next(
+        new handleerror(
+          `Access denied. Role (${userRole || "guest"}) is not authorized to access this resource.`,
+          403
+        )
+      );
     }
-}
+    next();
+  };
+};
 
-
+exports.isVerifiedSeller = (req, res, next) => {
+  if (!req.seller) {
+    return next(new handleerror("Merchant authentication required", 401));
+  }
+  if (!req.seller.isVerified && req.seller.verificationStatus !== "Verified") {
+    return next(
+      new handleerror(
+        "Store verification required. Please submit your TIN and business registration for review.",
+        403
+      )
+    );
+  }
+  next();
+};

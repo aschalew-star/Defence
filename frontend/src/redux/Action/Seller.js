@@ -1,4 +1,5 @@
 import axios from "axios";
+import { server } from "../../server";
 
 // get all sellers --- admin
 export const getAllSellers = () => async (dispatch) => {
@@ -7,7 +8,7 @@ export const getAllSellers = () => async (dispatch) => {
       type: "getAllSellersRequest",
     });
 
-    const { data } = await axios.get("http://localhost:5000/shop/admin-all-sellers", {
+    const { data } = await axios.get(`${server}/shop/admin-all-sellers`, {
       withCredentials: true,
     });
 
@@ -18,7 +19,7 @@ export const getAllSellers = () => async (dispatch) => {
   } catch (error) {
     dispatch({
       type: "getAllSellerFailed",
-    //   payload: error.response.data.message,
+      payload: error.response?.data?.message || error.message,
     });
   }
 };

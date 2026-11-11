@@ -1,16 +1,14 @@
-import React ,{useState} from "react";
+import React from "react";
 import Wish from "../component/Wishlist/Wish";
 import Navbar from "../component/Layout/Navbar";
 import Footer from "../component/Layout/Footer";
 
 function Wishpage() {
-    const [show , setshow]=useState(false)
   return (
-    <div className="pt-48 md:pt-28 -mt-1">
-      <Navbar active={5}/>
+    <div className="pt-28 md:pt-32 bg-gray-50/50 min-h-screen flex flex-col justify-between">
+      <Navbar active={5} />
       <Wish />
       <Footer />
-
     </div>
   );
 }

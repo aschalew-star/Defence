@@ -1,12 +1,9 @@
-import React from "react";
-import Navbar from "../../component/Layout/Navbar";
-
+﻿import React from "react";
 import Shoplogin from "../../component/shop/Shoplogin";
 
 function ShopLogin() {
   return (
-    <div className="pt-48 md:pt-2 -mt-1">
-      <Navbar show={7} />
+    <div className="min-h-screen bg-stone-50">
       <Shoplogin />
     </div>
   );

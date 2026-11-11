@@ -1,22 +1,22 @@
-import React from 'react'
-import DashboardSideBar from '../../component/shop/DashboardSideBar'
-import Navbar from '../../component/Layout/Navbar';
-import OrderDetails from '../../component/shop/Orderdetail';
+﻿import React from "react";
+import DashboardSideBar from "../../component/shop/DashboardSideBar";
+import MerchantNavbar from "../../component/shop/MerchantNavbar";
+import OrderDetails from "../../component/shop/Orderdetail";
 
 const Orderdtal = () => {
   return (
-        <div className="pt-48 md:pt-28 -mt-1">
-            <Navbar show={7} />
-            <div className="flex justify-between w-full">
-                <div className="w-[80px] 800px:w-[330px]">
-                  <DashboardSideBar active={2} />
-                </div>
-                <div className="w-full justify-center flex ">
-                   <OrderDetails />
-                </div>
-              </div>
+    <div className="min-h-screen bg-stone-50">
+      <MerchantNavbar />
+      <div className="flex w-full pt-16">
+        <div className="w-[72px] md:w-[270px] flex-shrink-0">
+          <DashboardSideBar active={2} />
         </div>
-  )
-}
+        <div className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 overflow-hidden">
+          <OrderDetails />
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default Orderdtal;

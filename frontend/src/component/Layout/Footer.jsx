@@ -9,89 +9,141 @@ import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
-    <div className="bg-[#000] text-white">
-      <div className="md:flex md:justify-between md:items-center h-auto md:h-[40px] sm:px-12 px-4 bg-[#342ac8] py-7">
-        <h1 className="lg:text-2xl text-3xl md:mb-0 mb-6 lg:leading-6 font-semibold md:w-2/5">
-          <span className="text-[#56d879]">Subscribe</span> us for get news{" "}
-          <br />
-          events and offers
-        </h1>
-        <div>
-          <input
-            type="text"
-            required
-            placeholder="Enter your email..."
-            className="text-gray-800
-                sm:w-72 w-full sm:mr-5 mr-1 lg:mb-0 mb-4 py-1 rounded px-2 focus:outline-none"
-          />
-          <button className="bg-[#56d879] hover:bg-teal-500 duration-300 px-2 py-1 rounded-md text-whie md:w-auto w-full">
-            Submit
-          </button>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 sm:gird-cols-3 lg:grid-cols-4 gap-6 sm:px-8 px-5 pt-6 sm:text-center">
-        <ul className="px-5 text-center sm:text-start flex sm:block flex-col items-center">
-          <div className="text-[50px] font-bold">MEP</div>
-          <br />
-          <p>The home and elements needeed to create beatiful products.</p>
-          <div className="justify-center items-center pt-4"> Follow Us:</div>
-
-          <div className="flex items-center mt-[15px]">
-            <AiFillFacebook size={25} className="cursor-pointer" />
-            <AiOutlineTwitter
-              size={25}
-              style={{ marginLeft: "15px", cursor: "pointer" }}
-            />
-            <AiFillInstagram
-              size={25}
-              style={{ marginLeft: "15px", cursor: "pointer" }}
-            />
-            <AiFillYoutube
-              size={25}
-              style={{ marginLeft: "15px", cursor: "pointer" }}
-            />
+    <footer className="bg-gradient-to-b from-gray-950 via-gray-900 to-black text-gray-300 mt-20 border-t border-amber-900/40">
+      {/* Newsletter Strip */}
+      <div className="bg-gradient-to-r from-amber-900 via-amber-800 to-amber-950 py-8 px-4 sm:px-6 lg:px-8 text-white">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-xl sm:text-2xl font-bold font-serif">
+              Stay Connected with Ethiopian Fashion
+            </h3>
+            <p className="text-xs text-amber-200 mt-0.5">
+              Subscribe to get exclusive previews of new handwoven collections, festive discounts, and artisan stories.
+            </p>
           </div>
-        </ul>
-        <div>
-          <div className="justify-start">
-            <div className="text-[25px] pb-3">📞 Contact Us:</div>
-            <div className="-ml-2">Email: asche@gmail.com</div>
-            <div className="ml-2 pt-1">Phone: +251 900 3429 4000</div>
-            <div className="-ml-3 pt-1">Location: adise ketema</div>
-          </div>
-        </div>
-        <div>
-          <div className="justify-start">
-            <div className="text-[25px] "> 🛍️ Our Services:</div>
-            <div className="">Buy & Sell Ethiopian Traditional Cloth</div>
-            <div className="">Secure Transactions</div>
-            <div className="">Verified Merchants</div>
-            <div className="">Fast & Reliable Shipping</div>
-          </div>
-        </div>
-        <div>
-          <div className="justify-start">
-            <div className="text-[25px] "> 🔗 Quick Links:</div>
-            <div className="">Home</div>
-
-            <div className="">About Us</div>
-            <div className="">Browse Merchants</div>
-            <div className="">Sell with Us</div>
-            <div className="">Contact us</div>
+          <div className="flex w-full md:w-auto max-w-md gap-2">
+            <input
+              type="email"
+              placeholder="Enter your email address..."
+              className="bg-white/10 border border-amber-600/40 text-white placeholder-amber-200/60 px-4 py-2.5 rounded-xl text-xs flex-1 outline-none focus:bg-white/20 focus:border-white transition"
+            />
+            <button className="px-5 py-2.5 bg-white hover:bg-amber-100 text-amber-900 font-bold rounded-xl text-xs transition shadow shrink-0">
+              Subscribe
+            </button>
           </div>
         </div>
       </div>
 
-      <div
-        className=" 
-         text-center  text-gray-400 
-         text-sm pb-8"
-      >
-       
-        <span>© 2017 MEP. All rights reserved.</span>
-        <span>Terms · Privacy Policy</span>
+      {/* Main Footer Links */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        {/* Brand Column */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-700 flex items-center justify-center text-white font-extrabold text-xl shadow">
+              M
+            </div>
+            <span className="text-2xl font-bold font-serif text-white tracking-tight">
+              MEP<span className="text-amber-500">.</span>
+            </span>
+          </div>
+          <p className="text-xs text-gray-400 leading-relaxed mb-4">
+            Ethiopia's premier cultural fashion marketplace. We bring centuries of authentic hand-spun cotton and Tibeb craftsmanship to wardrobes worldwide.
+          </p>
+          <div className="flex items-center gap-3 text-gray-400">
+            <AiFillFacebook size={20} className="hover:text-amber-400 cursor-pointer transition" />
+            <AiFillInstagram size={20} className="hover:text-amber-400 cursor-pointer transition" />
+            <AiOutlineTwitter size={20} className="hover:text-amber-400 cursor-pointer transition" />
+            <AiFillYoutube size={20} className="hover:text-amber-400 cursor-pointer transition" />
+          </div>
+        </div>
+
+        {/* Quick Links */}
+        <div>
+          <h4 className="text-sm font-bold uppercase tracking-wider text-amber-400 mb-4 font-serif">
+            Traditional Collections
+          </h4>
+          <ul className="space-y-2 text-xs text-gray-400">
+            <li>
+              <Link to="/product/category/Habesha Kemis" className="hover:text-white transition">
+                Women's Habesha Kemis
+              </Link>
+            </li>
+            <li>
+              <Link to="/product/category/Men's Attire" className="hover:text-white transition">
+                Men's Cultural Suits & Shirts
+              </Link>
+            </li>
+            <li>
+              <Link to="/product/category/Kids Collection" className="hover:text-white transition">
+                Children's Festive Attire
+              </Link>
+            </li>
+            <li>
+              <Link to="/product/category/Ceremonial & Elders" className="hover:text-white transition">
+                Gabi, Netela & Shawls
+              </Link>
+            </li>
+            <li>
+              <Link to="/event" className="hover:text-white transition">
+                Cultural Events & Festivals
+              </Link>
+            </li>
+          </ul>
+        </div>
+
+        {/* Customer Care */}
+        <div>
+          <h4 className="text-sm font-bold uppercase tracking-wider text-amber-400 mb-4 font-serif">
+            Customer Support
+          </h4>
+          <ul className="space-y-2 text-xs text-gray-400">
+            <li>
+              <Link to="/shops" className="hover:text-white transition text-amber-300 font-semibold">
+                Explore Verified Artisans
+              </Link>
+            </li>
+            <li>
+              <Link to="/order" className="hover:text-white transition">
+                Track My Order
+              </Link>
+            </li>
+            <li>
+              <Link to="/faq" className="hover:text-white transition">
+                Frequently Asked Questions
+              </Link>
+            </li>
+            <li>
+              <Link to="/wishlist" className="hover:text-white transition">
+                My Saved Wishlist
+              </Link>
+            </li>
+            <li>
+              <Link to="/shop-create" className="hover:text-white transition">
+                Become a Verified Artisan
+              </Link>
+            </li>
+          </ul>
+        </div>
+
+        {/* Contact Info */}
+        <div>
+          <h4 className="text-sm font-bold uppercase tracking-wider text-amber-400 mb-4 font-serif">
+            Contact & Office
+          </h4>
+          <div className="space-y-2 text-xs text-gray-400">
+            <p>📍 Shiro Meda & Piazza, Addis Ababa, Ethiopia</p>
+            <p>📞 Phone: +251 900 342 940</p>
+            <p>✉️ Email: support@mepethiopia.com</p>
+            <p>💳 Payments: Chapa, Telebirr, CBE Birr, Visa, Mastercard</p>
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* Bottom Legal Bar */}
+      <div className="border-t border-gray-800/80 py-4 text-center text-xs text-gray-500">
+        <p>© {new Date().getFullYear()} MEP Ethiopian Traditional Cloth Platform. All rights reserved.</p>
+      </div>
+    </footer>
   );
 };
 
