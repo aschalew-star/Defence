@@ -72,6 +72,16 @@ const userSchema = new mongoose.Schema(
         type: String,
       },
     },
+    customMeasurements: {
+      bust: { type: String, default: "" },
+      waist: { type: String, default: "" },
+      hips: { type: String, default: "" },
+      length: { type: String, default: "" },
+      shoulders: { type: String, default: "" },
+      height: { type: String, default: "" },
+      notes: { type: String, default: "" },
+      unit: { type: String, default: "cm" },
+    },
     isActive: {
       type: Boolean,
       default: true,

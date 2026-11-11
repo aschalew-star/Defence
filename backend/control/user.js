@@ -219,6 +219,42 @@ Router.put(
   })
 );
 
+// update customer body measurements for custom tailored kemis
+Router.put(
+  "/update-measurements",
+  isAuthenticated,
+  asynfun(async (req, res, next) => {
+    try {
+      const user = await User.findById(req.user.id);
+      if (!user) {
+        return next(new handleerror("User not found!", 400));
+      }
+
+      const { bust, waist, hips, length, shoulders, height, notes, unit } = req.body;
+      user.customMeasurements = {
+        bust: bust || "",
+        waist: waist || "",
+        hips: hips || "",
+        length: length || "",
+        shoulders: shoulders || "",
+        height: height || "",
+        notes: notes || "",
+        unit: unit || "cm",
+      };
+
+      await user.save();
+
+      res.status(200).json({
+        success: true,
+        user,
+        message: "Traditional body measurements saved to your profile!",
+      });
+    } catch (error) {
+      return next(new handleerror(error.message, 500));
+    }
+  })
+);
+
 // 6. Update User Avatar
 Router.put(
   "/update-avatar",

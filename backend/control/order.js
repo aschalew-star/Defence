@@ -905,4 +905,32 @@ router.get(
   })
 );
 
+// 13. Process Expired 72-Hour Inspection Windows (Auto Escrow Release)
+router.post(
+  "/process-expired-inspections",
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const expiredSubOrders = await SubOrder.find({
+        status: "Delivered - Pending Inspection",
+        "deliveryVerification.inspectionWindowEndsAt": { $lte: new Date() },
+        "financials.payoutStatus": "Inspection Period",
+      });
+
+      let releasedCount = 0;
+      for (const order of expiredSubOrders) {
+        await executeEscrowRelease(order, "Auto-Release (72h SLA Elapsed)", { name: "System Automation" });
+        releasedCount++;
+      }
+
+      res.status(200).json({
+        success: true,
+        releasedCount,
+        message: `Processed ${releasedCount} order(s) past the 72-hour inspection window.`,
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
 module.exports = router;

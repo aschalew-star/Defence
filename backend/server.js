@@ -120,6 +120,25 @@ const server = app.listen(port, (err) => {
     console.error("Error starting server:", err);
   } else {
     console.log(`🚀 MEP Marketplace Server listening on port ${port}`);
+
+    // Auto-release orders past the 72-hour customer inspection window (Every 30 minutes)
+    const SubOrder = require("./model/SubOrder");
+    const axios = require("axios");
+    setInterval(async () => {
+      try {
+        const count = await SubOrder.countDocuments({
+          status: "Delivered - Pending Inspection",
+          "deliveryVerification.inspectionWindowEndsAt": { $lte: new Date() },
+          "financials.payoutStatus": "Inspection Period",
+        });
+        if (count > 0) {
+          console.log(`⏰ Background Check: Auto-releasing ${count} order(s) past 72h inspection window.`);
+          await axios.post(`http://localhost:${port}/order/process-expired-inspections`).catch(() => {});
+        }
+      } catch (err) {
+        // silent background catch
+      }
+    }, 30 * 60 * 1000);
   }
 });
 
