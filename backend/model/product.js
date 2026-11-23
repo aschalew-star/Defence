@@ -219,12 +219,146 @@ const productSchema = new mongoose.Schema(
       height: { type: Number, default: 0 },
     },
 
+    // AliExpress-Grade Enterprise E-Commerce Features:
+    // 1. Tiered Volume / Wholesale Pricing
+    bulkPricing: [
+      {
+        minQty: { type: Number, required: true },
+        discountPercentage: { type: Number, required: true }, // e.g., 10 for 10% discount
+      },
+    ],
+
+    // 2. Flash Deals, Group Buying & Countdown Timers
+    flashSale: {
+      isActive: { type: Boolean, default: false, index: true },
+      discountPrice: { type: Number },
+      startTime: { type: Date },
+      endTime: { type: Date, index: true },
+      allocatedStock: { type: Number, default: 0 },
+      soldCount: { type: Number, default: 0 },
+    },
+
+    // 3. AliExpress 15-Day Buyer Protection Guarantee & SLA
+    buyerProtection: {
+      returnWindowDays: { type: Number, default: 15 },
+      moneyBackGuaranteed: { type: Boolean, default: true },
+      onTimeDeliveryDays: { type: Number, default: 7 },
+    },
+
+    // 4. Tiered Multi-Option Shipping Rates
+    shippingTiers: [
+      {
+        provider: { type: String, default: "Standard Domestic Delivery" },
+        estimatedDays: { type: String, default: "3-5 Business Days" },
+        rateETB: { type: Number, default: 150 },
+        freeThresholdETB: { type: Number, default: 3000 },
+      },
+      {
+        provider: { type: String, default: "Express Intra-City (Tikus / Deliver Addis)" },
+        estimatedDays: { type: String, default: "Same Day / 24 Hours" },
+        rateETB: { type: Number, default: 280 },
+        freeThresholdETB: { type: Number, default: 5000 },
+      },
+      {
+        provider: { type: String, default: "Diaspora International Express (DHL)" },
+        estimatedDays: { type: String, default: "3-7 Days Worldwide" },
+        rateETB: { type: Number, default: 1850 },
+        freeThresholdETB: { type: Number, default: 25000 },
+      },
+    ],
+
+    // 5. Frequently Bought Together & Bundle Recommendations
+    bundleProducts: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+      },
+    ],
+
+    // 6. Q&A and Price Drop Analytics
+    questionsCount: {
+      type: Number,
+      default: 0,
+    },
+    priceHistory: [
+      {
+        price: { type: Number },
+        recordedAt: { type: Date, default: Date.now },
+      },
+    ],
+
     // SEO Meta
     metaTitle: { type: String, default: "" },
     metaDescription: { type: String, default: "" },
+
+    // === AliExpress-Grade Trust & Authenticity Signals ===
+
+    // Authenticity & artisan certification
+    authenticity: {
+      isHandmade: { type: Boolean, default: true },
+      isCertifiedArtisan: { type: Boolean, default: false },
+      certificateId: { type: String, default: "" },
+      region: { type: String, default: "" },
+      artisanName: { type: String, default: "" },
+    },
+
+    // Confidence signals shown to buyer ("500+ sold", "2.3k wishlisted")
+    confidenceSignals: {
+      totalSold: { type: Number, default: 0 },
+      totalWishlistCount: { type: Number, default: 0 },
+      viewsLast30Days: { type: Number, default: 0 },
+      returnsLast30Days: { type: Number, default: 0 },
+      returnRate: { type: Number, default: 0, min: 0, max: 100 },
+    },
+
+    // Video showcase (AliExpress has product videos)
+    videos: [
+      {
+        public_id: { type: String },
+        url: { type: String },
+        thumbnail: { type: String, default: "" },
+        duration: { type: Number, default: 0 },
+      },
+    ],
+
+    // Size guide (critical for Ethiopian garments)
+    sizeGuide: {
+      hasCustomSizing: { type: Boolean, default: false },
+      sizeChart: [
+        {
+          size: { type: String },
+          bust: { type: String, default: "" },
+          waist: { type: String, default: "" },
+          hips: { type: String, default: "" },
+          length: { type: String, default: "" },
+        },
+      ],
+      fitType: {
+        type: String,
+        enum: [
+          "Loose/Traditional",
+          "Semi-fitted",
+          "Fitted/Tailored",
+          "Custom to Measurement",
+        ],
+        default: "Loose/Traditional",
+      },
+    },
   },
   { timestamps: true }
 );
+
+// Record initial price in priceHistory if empty
+productSchema.pre("save", function (next) {
+  if (this.isModified("discountPrice")) {
+    if (!this.priceHistory) this.priceHistory = [];
+    this.priceHistory.push({
+      price: this.discountPrice,
+      recordedAt: new Date(),
+    });
+  }
+  next();
+});
 
 // Auto-sync shopRef from shopId if present
 productSchema.pre("save", function (next) {
@@ -236,5 +370,14 @@ productSchema.pre("save", function (next) {
 
 // Compound text index for search across titles, descriptions, and tags
 productSchema.index({ name: "text", description: "text", tags: "text", category: "text" });
+
+// High-performance compound indexes for catalog filtering, sorting, flash sales, and merchant queries
+productSchema.index({ status: 1, createdAt: -1 });
+productSchema.index({ status: 1, category: 1 });
+productSchema.index({ status: 1, discountPrice: 1 });
+productSchema.index({ status: 1, sold_out: -1 });
+productSchema.index({ status: 1, "flashSale.isActive": 1, "flashSale.endTime": 1 });
+productSchema.index({ shopId: 1, status: 1, createdAt: -1 });
+productSchema.index({ shopRef: 1, status: 1 });
 
 module.exports = mongoose.model("Product", productSchema);

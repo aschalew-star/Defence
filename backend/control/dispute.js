@@ -5,6 +5,7 @@ const Order = require("../model/Order");
 const SubOrder = require("../model/SubOrder");
 const Shop = require("../model/Shop");
 const ActivityLog = require("../model/activityLog");
+const eventBus = require("../services/eventBus");
 const catchAsyncErrors = require("../utils/asynerror");
 const ErrorHandler = require("../utils/handleerror");
 const { isAuthenticated, isSeller, isAdmin } = require("../middleware/auth");
@@ -57,6 +58,13 @@ router.post(
         details,
         requestedResolution: requestedResolution || "Full Refund",
         evidence: evidenceLinks,
+        linkedReturn: req.body.linkedReturn || null,
+        escalationLevel: "seller",
+        deadlines: {
+          sellerMustRespondBy: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+          platformDecisionBy: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+          autoResolutionAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+        },
         messages: [
           {
             sender: "Customer",
@@ -68,6 +76,24 @@ router.post(
           },
         ],
       });
+
+      // Update buyer statistics
+      try {
+        const User = require("../model/user");
+        await User.findByIdAndUpdate(req.user._id, {
+          $inc: { "buyerStats.disputesFiled": 1 },
+        }).catch(() => {});
+      } catch (e) {}
+
+      // Update merchant dispute metrics
+      try {
+        const targetShop = shopId || order.cart?.[0]?.shopId || order.cart?.[0]?.shop?._id;
+        if (targetShop) {
+          await Shop.findByIdAndUpdate(targetShop, {
+            $inc: { "performanceMetrics.disputeCount": 1 },
+          }).catch(() => {});
+        }
+      } catch (e) {}
 
       // Update order status & freeze escrow immediately
       if (subOrderId) {
@@ -86,6 +112,13 @@ router.post(
         success: true,
         dispute,
         message: "Dispute opened successfully. The merchant has been notified.",
+      });
+
+      // Asynchronously dispatch multi-channel notifications (In-App, Email, SMS)
+      eventBus.publish("DISPUTE_FILED", {
+        dispute,
+        order,
+        customer: req.user,
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -226,7 +259,23 @@ router.put(
         dispute.status = "Resolved - Rejected";
       }
 
+      // Enable post-resolution customer satisfaction survey
+      dispute.postResolutionSurvey = {
+        available: true,
+        completedAt: null,
+        rating: null,
+        feedback: "",
+      };
+
       await dispute.save();
+
+      // Trigger SellerScore recomputation after dispute resolution
+      try {
+        const SellerScore = require("../model/sellerScore");
+        if (dispute.shop) {
+          await SellerScore.computeScore(dispute.shop).catch(() => {});
+        }
+      } catch (e) {}
 
       // Log arbitration action
       await ActivityLog.create({
@@ -243,6 +292,84 @@ router.put(
         success: true,
         dispute,
         message: `Dispute resolved: ${decision}`,
+      });
+
+      // Asynchronously dispatch multi-channel notifications (In-App, Email, SMS)
+      eventBus.publish("DISPUTE_RESOLVED", {
+        dispute,
+        resolution: { decision, refundAmount },
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// 6. Customer Submit Post-Resolution Satisfaction Survey
+router.post(
+  "/survey/:id",
+  isAuthenticated,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { rating, feedback } = req.body;
+      const dispute = await Dispute.findById(req.params.id);
+
+      if (!dispute) {
+        return next(new ErrorHandler("Dispute not found!", 404));
+      }
+
+      if (dispute.customer.toString() !== req.user._id.toString()) {
+        return next(new ErrorHandler("Unauthorized to complete this survey", 403));
+      }
+
+      dispute.postResolutionSurvey = {
+        available: false,
+        completedAt: new Date(),
+        rating: Math.min(Math.max(Number(rating) || 5, 1), 5),
+        feedback: feedback || "",
+      };
+
+      await dispute.save();
+
+      res.status(200).json({
+        success: true,
+        message: "Thank you for rating your dispute resolution experience!",
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// 7. Escalate Dispute to Platform Arbitration (AliExpress Platform Mediation)
+router.post(
+  "/escalate-to-platform/:id",
+  isAuthenticated,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { reason } = req.body;
+      const dispute = await Dispute.findById(req.params.id);
+
+      if (!dispute) {
+        return next(new ErrorHandler("Dispute not found!", 404));
+      }
+
+      dispute.escalationLevel = "platform";
+      dispute.status = "Under Review";
+      dispute.messages.push({
+        sender: "System",
+        senderId: req.user._id.toString(),
+        senderName: req.user.name,
+        message: `Dispute escalated to platform mediators: ${reason || "Merchant agreement not reached within SLA window."}`,
+        createdAt: new Date(),
+      });
+
+      await dispute.save();
+
+      res.status(200).json({
+        success: true,
+        dispute,
+        message: "Dispute escalated to platform mediators for formal arbitration.",
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));

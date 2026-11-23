@@ -34,6 +34,7 @@ const withdrawSchema = new mongoose.Schema(
       accountNumber: { type: String, default: "" },
       phoneNumber: { type: String, default: "" },
       bankBranch: { type: String, default: "" },
+      bankCode: { type: String, default: "" }, // Chapa bank code for automated disbursement
     },
     transactionReference: {
       type: String,

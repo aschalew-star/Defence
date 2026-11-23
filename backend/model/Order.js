@@ -57,6 +57,20 @@ const orderSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    // AliExpress Wallet & Loyalty Rewards Settlement
+    walletAmountApplied: {
+      type: Number,
+      default: 0,
+      min: [0, "Wallet discount cannot be negative"],
+    },
+    coinsRedeemed: {
+      type: Number,
+      default: 0,
+    },
+    coinsDiscount: {
+      type: Number,
+      default: 0,
+    },
 
     // Aggregated Marketplace Financials
     financials: {
@@ -75,7 +89,6 @@ const orderSchema = new mongoose.Schema(
           "Refunded",
         ],
         default: "Pending Escrow",
-        index: true,
       },
     },
 
@@ -137,8 +150,88 @@ const orderSchema = new mongoose.Schema(
     deliveredAt: {
       type: Date,
     },
+
+    // AliExpress-Grade Enterprise Buyer Protection & Auto-Escrow Settlement
+    buyerProtection: {
+      protectionStatus: {
+        type: String,
+        enum: ["Active", "Extended", "Expired", "Claimed", "Voided"],
+        default: "Active",
+      },
+      protectionStartDate: { type: Date },
+      protectionEndDate: { type: Date },
+      autoConfirmDeadline: {
+        type: Date, // 15 days post delivery for escrow auto-release
+      },
+      returnWindowDays: {
+        type: Number,
+        default: 15,
+      },
+      moneyBackGuaranteed: {
+        type: Boolean,
+        default: true,
+      },
+      // Buyer can request extension
+      extensionRequested: { type: Boolean, default: false },
+      extensionDays: { type: Number, default: 0 },
+      extensionReason: { type: String, default: "" },
+    },
+
+    // Fraud signals (protects merchants from fraudulent buyers)
+    fraudSignals: {
+      riskScore: { type: Number, default: 0, min: 0, max: 100 },
+      riskLevel: {
+        type: String,
+        enum: ["low", "medium", "high"],
+        default: "low",
+      },
+      flaggedReasons: [{ type: String }],
+      ipCountry: { type: String, default: "" },
+      deviceFingerprint: { type: String, default: "" },
+      isFirstOrder: { type: Boolean, default: false },
+      paymentVerified: { type: Boolean, default: false },
+    },
+
+    // Gift options
+    giftOptions: {
+      isGift: { type: Boolean, default: false },
+      giftMessage: { type: String, default: "" },
+      giftWrapping: { type: Boolean, default: false },
+      hidePrice: { type: Boolean, default: false },
+    },
+
+    // Courier Waybill & Real-Time Tracking Updates
+    trackingDetails: {
+      waybillNumber: { type: String, index: true },
+      carrierName: { type: String, default: "Tikus Express" },
+      carrierPhone: { type: String, default: "" },
+      trackingEvents: [
+        {
+          status: { type: String },
+          location: { type: String },
+          timestamp: { type: Date, default: Date.now },
+          note: { type: String },
+        },
+      ],
+    },
+
+    // Enterprise Payment Security & Audit
+    security: {
+      idempotencyKey: { type: String, index: true },
+      ipAddress: { type: String },
+      maskedPhone: { type: String },
+      webhookVerified: { type: Boolean, default: false },
+    },
   },
   { timestamps: true }
 );
+
+// High-performance production compound indexes
+orderSchema.index({ userRef: 1, createdAt: -1 });
+orderSchema.index({ "user._id": 1, createdAt: -1 });
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ "paymentInfo.tx_ref": 1 });
+orderSchema.index({ "paymentInfo.id": 1 });
+orderSchema.index({ "financials.payoutStatus": 1 });
 
 module.exports = mongoose.model("Order", orderSchema);

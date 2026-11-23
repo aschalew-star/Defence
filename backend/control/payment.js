@@ -1,17 +1,35 @@
 const express = require("express");
 const axios = require("axios");
+const crypto = require("crypto");
 const Order = require("../model/Order");
 const SubOrder = require("../model/SubOrder");
 const Shop = require("../model/Shop");
 const LedgerEntry = require("../model/ledgerEntry");
 const ActivityLog = require("../model/activityLog");
+const eventBus = require("../services/eventBus");
 
 const router = express.Router();
 
-const CHAPA_SECRET_KEY =
-  process.env.CHAPA_SECRET_KEY ||
-  "CHASECK_TEST-1eSMtwQD3CWqw8SiOJTo73gw1GpD2ZwP";
+const CHAPA_SECRET_KEY = process.env.CHAPA_SECRET_KEY;
+const CHAPA_WEBHOOK_SECRET = process.env.CHAPA_WEBHOOK_SECRET || CHAPA_SECRET_KEY;
 const CHAPA_BASE_URL = "https://api.chapa.co/v1/transaction";
+
+// In-memory processed transaction cache for high-scale idempotency
+const processedTransactions = new Set();
+
+// Mask sensitive account/phone details for PCI-DSS & NBE compliance
+const maskPaymentDetails = (str) => {
+  if (!str || typeof str !== "string") return "";
+  if (str.length <= 4) return "****";
+  return str.slice(0, 3) + "****" + str.slice(-4);
+};
+
+const verifyChapaTransaction = (txRef) =>
+  axios.get(`${CHAPA_BASE_URL}/verify/${encodeURIComponent(txRef)}`, {
+    headers: {
+      Authorization: `Bearer ${CHAPA_SECRET_KEY}`,
+    },
+  });
 
 // Helper: Handle Payment Confirmation for Orders and SubOrders
 const handleSuccessfulPayment = async (tx_ref, chapaId) => {
@@ -82,6 +100,14 @@ const handleSuccessfulPayment = async (tx_ref, chapaId) => {
       targetType: "Order",
       details: { tx_ref, amount: order.totalPrice, chapaId },
     }).catch(() => {});
+
+    // Asynchronously dispatch multi-channel notifications (In-App, Email, SMS)
+    eventBus.publish("PAYMENT_SUCCESS", {
+      order,
+      subOrders,
+      tx_ref,
+      chapaId,
+    });
   }
 };
 
@@ -116,28 +142,68 @@ router.get("/config", (req, res) => {
 
 // Endpoint to create a payment session (Chapa Initialize)
 router.post("/init", validateRequestBody, async (req, res) => {
-  try {
-    const { amount, currency, email, first_name, last_name, tx_ref, return_url } =
-      req.body;
+  if (!CHAPA_SECRET_KEY) {
+    return res.status(503).json({ error: "Payment gateway is not configured." });
+  }
 
-    const response = await axios.post(
-      `${CHAPA_BASE_URL}/initialize`,
-      {
-        amount,
-        currency: currency || "ETB",
-        email: email || "customer@mep.et",
-        first_name,
-        last_name,
-        tx_ref,
-        return_url,
+  try {
+    const {
+      amount,
+      currency,
+      email,
+      first_name,
+      last_name,
+      phone_number,
+      tx_ref,
+      return_url,
+      customization,
+    } = req.body;
+
+    // Chapa Strict Validation Rules:
+    // 1. customization.title MUST NOT exceed 16 characters.
+    // 2. customization.description may ONLY contain letters, numbers, hyphens, underscores, spaces, and dots.
+    let sanitizedTitle = "MEP Crafts";
+    let sanitizedDesc = "Payment for Ethiopian artisan craft items.";
+
+    if (customization?.title) {
+      sanitizedTitle = String(customization.title)
+        .replace(/[^a-zA-Z0-9\s\-_]/g, "")
+        .trim()
+        .slice(0, 16);
+      if (!sanitizedTitle) sanitizedTitle = "MEP Crafts";
+    }
+
+    if (customization?.description) {
+      sanitizedDesc = String(customization.description)
+        .replace(/[^a-zA-Z0-9\s\-_\.]/g, "")
+        .trim();
+      if (!sanitizedDesc) sanitizedDesc = "Payment for Ethiopian artisan craft items.";
+    }
+
+    const payload = {
+      amount,
+      currency: currency || "ETB",
+      email: email || "customer@mep.et",
+      first_name,
+      last_name,
+      tx_ref,
+      return_url,
+      customization: {
+        title: sanitizedTitle,
+        description: sanitizedDesc,
       },
-      {
-        headers: {
-          Authorization: `Bearer ${CHAPA_SECRET_KEY}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    };
+
+    if (phone_number) {
+      payload.phone_number = String(phone_number).trim();
+    }
+
+    const response = await axios.post(`${CHAPA_BASE_URL}/initialize`, payload, {
+      headers: {
+        Authorization: `Bearer ${CHAPA_SECRET_KEY}`,
+        "Content-Type": "application/json",
+      },
+    });
 
     res.json(response.data);
   } catch (error) {
@@ -147,19 +213,57 @@ router.post("/init", validateRequestBody, async (req, res) => {
   }
 });
 
-// Webhook to handle payment notifications from Chapa
+// Webhook to handle payment notifications from Chapa (HMAC-SHA256 Protected & Idempotent)
 router.post("/success", async (req, res) => {
   try {
     const event = req.body;
+    const txRef = event?.tx_ref || event?.data?.tx_ref;
 
-    if (event.status === "success" && event.tx_ref) {
-      await handleSuccessfulPayment(event.tx_ref, event.id || event.reference);
+    if (!CHAPA_SECRET_KEY) {
+      return res.status(503).json({ error: "Payment gateway is not configured." });
     }
 
-    res.sendStatus(200);
+    if (!txRef) {
+      return res.status(400).json({ error: "Transaction reference is required." });
+    }
+
+    // Enterprise Webhook Cryptographic Signature Verification
+    const signature = req.headers["x-chapa-signature"] || req.headers["chapa-signature"];
+    if (signature && CHAPA_WEBHOOK_SECRET) {
+      const expectedSignature = crypto
+        .createHmac("sha256", CHAPA_WEBHOOK_SECRET)
+        .update(JSON.stringify(req.body))
+        .digest("hex");
+
+      if (signature !== expectedSignature) {
+        console.warn(`⚠️ Webhook signature mismatch for tx_ref: ${txRef}`);
+        return res.status(401).json({ error: "Invalid webhook cryptographic signature" });
+      }
+    }
+
+    // Idempotency: skip re-processing if already handled in memory
+    if (processedTransactions.has(txRef)) {
+      return res.status(200).json({ message: "Transaction already processed" });
+    }
+
+    const response = await verifyChapaTransaction(txRef);
+    const chapaData = response?.data?.data;
+    if (chapaData?.status !== "success" || chapaData.tx_ref !== txRef) {
+      return res.status(400).json({ error: "Payment could not be verified." });
+    }
+
+    processedTransactions.add(txRef);
+    // Keep memory cache bound
+    if (processedTransactions.size > 10000) {
+      const oldest = Array.from(processedTransactions).slice(0, 1000);
+      oldest.forEach((t) => processedTransactions.delete(t));
+    }
+
+    await handleSuccessfulPayment(txRef, chapaData.reference || chapaData.id);
+    return res.sendStatus(200);
   } catch (err) {
     console.error("Payment webhook error:", err.message);
-    res.sendStatus(200);
+    return res.status(500).json({ error: "Payment notification verification failed." });
   }
 });
 
@@ -170,16 +274,12 @@ router.post("/verify", async (req, res) => {
   if (!tx_ref) {
     return res.status(400).json({ status: "error", message: "Transaction reference is required" });
   }
+  if (!CHAPA_SECRET_KEY) {
+    return res.status(503).json({ status: "error", message: "Payment gateway is not configured." });
+  }
 
   try {
-    const response = await axios.get(
-      `https://api.chapa.co/v1/transaction/verify/${tx_ref}`,
-      {
-        headers: {
-          Authorization: `Bearer ${CHAPA_SECRET_KEY}`,
-        },
-      }
-    );
+    const response = await verifyChapaTransaction(tx_ref);
 
     const chapaData = response?.data?.data;
 
@@ -189,7 +289,10 @@ router.post("/verify", async (req, res) => {
         .json({ status: "error", message: "Invalid transaction data from payment gateway" });
     }
 
-    if (chapaData.status === "success") {
+    if (chapaData.status === "success" && chapaData.tx_ref === tx_ref) {
+      // Mark as processed in idempotency set
+      processedTransactions.add(tx_ref);
+
       // Complete confirmation across both master order and merchant sub-orders
       await handleSuccessfulPayment(tx_ref, chapaData.reference || chapaData.id);
 

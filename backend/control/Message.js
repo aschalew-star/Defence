@@ -3,6 +3,7 @@ const handleerror = require("../utils/handleerror");
 const asynerror = require("../utils/asynerror");
 const express = require("express");
 const cloudinary = require("cloudinary");
+const { getIO } = require("../socket");
 const router = express.Router();
 
 // create new message
@@ -34,6 +35,16 @@ router.post(
       });
 
       await message.save();
+
+      // Emit real-time message event to conversation room
+      try {
+        const io = getIO();
+        if (io) {
+          io.to(`conversation_${messageData.conversationId}`).emit("getRoomMessage", message);
+        }
+      } catch (socketErr) {
+        // Socket emission is non-blocking
+      }
 
       res.status(201).json({
         success: true,

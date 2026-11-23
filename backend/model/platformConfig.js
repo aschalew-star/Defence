@@ -23,15 +23,15 @@ const platformConfigSchema = new mongoose.Schema(
     },
     requireSellerVerification: {
       type: Boolean,
-      default: false, // If true, only verified merchants can list products
+      default: false,
     },
     requireProductApproval: {
       type: Boolean,
-      default: false, // If true, all products start as "pending"
+      default: false,
     },
     escrowHoldingDays: {
       type: Number,
-      default: 0, // Instant on delivery, or buffer days
+      default: 0,
     },
     supportContact: {
       phone: { type: String, default: "+251911000000" },
@@ -47,9 +47,56 @@ const platformConfigSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    // ─── AliExpress-Grade Platform Governance ───────────────────
+
+    // Buyer protection defaults (governs Order.buyerProtection)
+    buyerProtection: {
+      defaultProtectionDays: { type: Number, default: 60 },
+      returnWindowDays: { type: Number, default: 15 },
+      autoConfirmAfterDays: { type: Number, default: 15 },
+      maxProtectionExtensionDays: { type: Number, default: 15 },
+      enableMoneyBackGuarantee: { type: Boolean, default: true },
+    },
+
+    // Platform-wide return policy rules
+    returnPolicy: {
+      autoApproveThreshold: { type: Number, default: 500 }, // ETB — auto-approve returns below this
+      requirePhotos: { type: Boolean, default: true },
+      maxReturnDays: { type: Number, default: 15 },
+    },
+
+    // Seller SLA enforcement thresholds
+    sellerSLA: {
+      mustConfirmOrderHours: { type: Number, default: 48 },
+      mustShipDays: { type: Number, default: 5 },
+      maxDisputeResponseDays: { type: Number, default: 5 },
+      maxReturnResponseDays: { type: Number, default: 3 },
+      minSellerScoreToSell: { type: Number, default: 20 },
+    },
+
+    // Product listing quality requirements
+    quality: {
+      minPhotosPerProduct: { type: Number, default: 3 },
+      requireSizeGuide: { type: Boolean, default: false },
+      enableAuthenticityCert: { type: Boolean, default: false },
+    },
+
+    // Referral program configuration
+    referralProgram: {
+      enabled: { type: Boolean, default: false },
+      referrerRewardCoins: { type: Number, default: 200 },
+      refereeRewardCoins: { type: Number, default: 100 },
+    },
+
+    // Platform fee structure
+    fees: {
+      buyerServiceFeePercent: { type: Number, default: 0 },
+      sellerListingFee: { type: Number, default: 0 },
+      promotionFee: { type: Number, default: 0 },
+    },
   },
   { timestamps: true }
 );
 
 module.exports = mongoose.model("PlatformConfig", platformConfigSchema);
-

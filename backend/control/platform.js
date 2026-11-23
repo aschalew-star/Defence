@@ -6,6 +6,7 @@ const Order = require("../model/Order");
 const Product = require("../model/product");
 const SubOrder = require("../model/SubOrder");
 const ActivityLog = require("../model/activityLog");
+const LedgerEntry = require("../model/ledgerEntry");
 const catchAsyncErrors = require("../utils/asynerror");
 const ErrorHandler = require("../utils/handleerror");
 const { isAuthenticated, isAdmin } = require("../middleware/auth");
@@ -119,6 +120,60 @@ router.get(
           merchantDisbursements: financialStats[0]?.totalMerchantNet || 0,
           recentLogs,
         },
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// 4. Admin Get Immutable Financial Ledger & Escrow Vault Entries
+router.get(
+  "/admin-ledger",
+  isAuthenticated,
+  isAdmin("admin", "superadmin"),
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const ledgerEntries = await LedgerEntry.find()
+        .populate("shop", "name email phoneNumber avatar")
+        .sort({ createdAt: -1 })
+        .limit(200);
+
+      const shops = await Shop.find().select("availableBalance pendingBalance totalWithdrawn");
+      const totalEscrowPool = shops.reduce((acc, s) => acc + (s.pendingBalance || 0), 0);
+      const totalAvailableBalance = shops.reduce((acc, s) => acc + (s.availableBalance || 0), 0);
+      const totalLifetimeDisbursed = shops.reduce((acc, s) => acc + (s.totalWithdrawn || 0), 0);
+
+      res.status(200).json({
+        success: true,
+        ledgerEntries,
+        vaultMetrics: {
+          totalEscrowPool,
+          totalAvailableBalance,
+          totalLifetimeDisbursed,
+          entryCount: ledgerEntries.length,
+        },
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// 5. Admin Get Activity & Security Audit Trail
+router.get(
+  "/admin-activity-logs",
+  isAuthenticated,
+  isAdmin("admin", "superadmin"),
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const logs = await ActivityLog.find()
+        .sort({ createdAt: -1 })
+        .limit(150);
+
+      res.status(200).json({
+        success: true,
+        logs,
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));

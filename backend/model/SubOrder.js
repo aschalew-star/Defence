@@ -19,7 +19,6 @@ const subOrderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Order",
       required: true,
-      index: true,
     },
     parentOrderNumber: {
       type: String,
@@ -114,7 +113,6 @@ const subOrderSchema = new mongoose.Schema(
           "Disputed Frozen",
         ],
         default: "Pending Escrow",
-        index: true,
       },
       payoutId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -226,6 +224,39 @@ const subOrderSchema = new mongoose.Schema(
       cancelledAt: { type: Date },
     },
 
+    // === AliExpress-Grade SLA & Quality Tracking ===
+
+    // SLA tracking (force sellers to ship on time)
+    sla: {
+      mustConfirmBy: { type: Date },
+      mustShipBy: { type: Date },
+      mustDeliverBy: { type: Date },
+      isOverdue: { type: Boolean, default: false },
+      overdueType: {
+        type: String,
+        enum: ["confirmation", "shipping", "delivery", "none"],
+        default: "none",
+      },
+      penaltyApplied: { type: Boolean, default: false },
+    },
+
+    // Quality inspection (seller uploads proof before shipping)
+    qualityInspection: {
+      inspected: { type: Boolean, default: false },
+      inspectionPhotos: [{ public_id: String, url: String }],
+      inspectedAt: { type: Date },
+      inspectionNotes: { type: String, default: "" },
+    },
+
+    // Customer satisfaction (post-delivery micro-survey)
+    satisfaction: {
+      itemAsDescribed: { type: Number, min: 1, max: 5 },
+      communicationRating: { type: Number, min: 1, max: 5 },
+      shippingSpeed: { type: Number, min: 1, max: 5 },
+      overallSatisfied: { type: Boolean },
+      submittedAt: { type: Date },
+    },
+
     shippingAddress: {
       type: Object,
       required: true,
@@ -243,8 +274,31 @@ const subOrderSchema = new mongoose.Schema(
     deliveredAt: {
       type: Date,
     },
+
+    // Courier Waybill & Real-Time Tracking Updates
+    trackingDetails: {
+      waybillNumber: { type: String, index: true },
+      carrierName: { type: String, default: "Tikus Express" },
+      carrierPhone: { type: String, default: "" },
+      trackingEvents: [
+        {
+          status: { type: String },
+          location: { type: String },
+          timestamp: { type: Date, default: Date.now },
+          note: { type: String },
+        },
+      ],
+    },
   },
   { timestamps: true }
 );
+
+// High-performance production compound indexes for multi-merchant scaling
+subOrderSchema.index({ shopId: 1, status: 1, createdAt: -1 });
+subOrderSchema.index({ shop: 1, status: 1, createdAt: -1 });
+subOrderSchema.index({ parentOrder: 1 });
+subOrderSchema.index({ customer: 1, createdAt: -1 });
+subOrderSchema.index({ "paymentInfo.tx_ref": 1 });
+subOrderSchema.index({ "financials.payoutStatus": 1 });
 
 module.exports = mongoose.model("SubOrder", subOrderSchema);

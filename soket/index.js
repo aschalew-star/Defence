@@ -10,17 +10,37 @@ const socketIO = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 
-const clientOrigin = process.env.CLIENT_URL || "http://localhost:3000";
+const allowedOrigins = new Set(
+  (process.env.CLIENT_URL || "")
+    .split(",")
+    .map((origin) => origin.trim().replace(/\/$/, ""))
+    .filter(Boolean)
+);
+
+if (process.env.NODE_ENV !== "production") {
+  ["http://localhost:3000", "http://localhost:8081"].forEach((origin) =>
+    allowedOrigins.add(origin)
+  );
+} else if (allowedOrigins.size === 0) {
+  throw new Error("CLIENT_URL must contain the allowed production frontend origin(s).");
+}
+
+const checkOrigin = (origin, callback) => {
+  if (!origin || allowedOrigins.has(origin)) {
+    return callback(null, true);
+  }
+  return callback(new Error("Origin is not allowed by CORS"));
+};
 
 const io = socketIO(server, {
   cors: {
-    origin: [clientOrigin, "http://localhost:3000", "http://localhost:8081"],
+    origin: checkOrigin,
     methods: ["GET", "POST"],
     credentials: true,
   },
 });
 
-app.use(cors());
+app.use(cors({ origin: checkOrigin, credentials: true }));
 app.use(express.json());
 
 app.get("/health", (req, res) => {
@@ -123,7 +143,7 @@ io.on("connection", (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 4000;
+const PORT = Number(process.env.PORT || 4000);
 server.listen(PORT, () => {
   console.log(`Socket server is running on port ${PORT}`);
 });

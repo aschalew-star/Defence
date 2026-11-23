@@ -9,6 +9,8 @@ const Shop = require("../model/Shop");
 const Product = require("../model/product");
 const LedgerEntry = require("../model/ledgerEntry");
 const ActivityLog = require("../model/activityLog");
+const eventBus = require("../services/eventBus");
+const { notifyUser } = require("../socket");
 
 // 1. Create New Order (Multi-Vendor Split + Atomic Concurrency Protection + Dynamic Shipping)
 router.post(
@@ -121,6 +123,50 @@ router.post(
 
       await masterOrder.save();
 
+      // Set buyer protection window (60 days from order placement)
+      masterOrder.buyerProtection = {
+        ...(masterOrder.buyerProtection || {}),
+        protectionStatus: "Active",
+        protectionStartDate: new Date(),
+        protectionEndDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+        returnWindowDays: 15,
+        moneyBackGuaranteed: true,
+      };
+
+      // Intelligent Anti-Fraud Risk Evaluation
+      const customerId = user?._id || user?.id;
+      let isFirstOrder = true;
+      let riskLevel = "low";
+      let riskScore = 5;
+      const flaggedReasons = [];
+      if (customerId) {
+        const prevCount = await Order.countDocuments({
+          $or: [{ "user._id": customerId }, { userRef: customerId }],
+        });
+        isFirstOrder = prevCount === 0;
+        if (isFirstOrder && Number(totalPrice) > 25000) {
+          riskLevel = "medium";
+          riskScore = 35;
+          flaggedReasons.push("High value first-time order");
+        }
+      }
+      masterOrder.fraudSignals = {
+        riskScore,
+        riskLevel,
+        flaggedReasons,
+        isFirstOrder,
+        paymentVerified: Boolean(paymentInfo?.status === "Successful" || paymentInfo?.status === "Paid"),
+      };
+
+      if (req.body.giftOptions) {
+        masterOrder.giftOptions = {
+          isGift: Boolean(req.body.giftOptions.isGift),
+          giftMessage: req.body.giftOptions.giftMessage || "",
+          giftWrapping: Boolean(req.body.giftOptions.giftWrapping),
+          hidePrice: Boolean(req.body.giftOptions.hidePrice),
+        };
+      }
+
       const createdSubOrders = [];
       let aggregatedPlatformFee = 0;
       let aggregatedMerchantEarnings = 0;
@@ -203,6 +249,13 @@ router.post(
             merchantNetEarnings,
             payoutStatus: "Pending Escrow",
           },
+          sla: {
+            mustConfirmBy: new Date(Date.now() + 48 * 60 * 60 * 1000),
+            mustShipBy: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+            mustDeliverBy: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+            isOverdue: false,
+            penaltyApplied: false,
+          },
           milestones: {
             placedAt: new Date(),
           },
@@ -259,12 +312,42 @@ router.post(
         },
       }).catch(() => {});
 
+      // 7. Emit real-time socket alerts to merchants
+      try {
+        for (const targetShopId of shopItemsMap.keys()) {
+          notifyUser(targetShopId.toString(), "orderNotification", {
+            type: "NEW_ORDER_RECEIVED",
+            orderNumber: masterOrder.orderNumber,
+            totalPrice,
+            customerName: user?.name || "Customer",
+            createdAt: new Date(),
+          });
+        }
+      } catch (e) {}
+
+      // Update buyer stats
+      try {
+        const User = require("../model/user");
+        if (user?._id) {
+          await User.findByIdAndUpdate(user._id, {
+            $inc: { "buyerStats.totalOrders": 1, "buyerStats.totalSpent": Number(totalPrice) || 0 },
+          }).catch(() => {});
+        }
+      } catch (e) {}
+
       res.status(201).json({
         success: true,
         order: masterOrder,
         orders: createdSubOrders,
         subOrders: createdSubOrders,
         message: "Order placed successfully!",
+      });
+
+      // Asynchronously dispatch multi-channel notifications (In-App, Email, SMS)
+      eventBus.publish("ORDER_CREATED", {
+        order: masterOrder,
+        subOrders: createdSubOrders,
+        user,
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -339,6 +422,47 @@ router.get(
 
       if (!order) {
         return next(new ErrorHandler("Order not found with this id", 404));
+      }
+
+      res.status(200).json({
+        success: true,
+        order,
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// 4b. Get Order by Transaction Reference (Chapa / Telebirr payment confirmation)
+router.get(
+  "/by-tx-ref/:tx_ref",
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { tx_ref } = req.params;
+      let order = await Order.findOne({
+        $or: [
+          { "paymentInfo.tx_ref": tx_ref },
+          { "paymentInfo.id": tx_ref },
+          { orderNumber: tx_ref },
+        ],
+      }).populate("subOrders");
+
+      if (!order) {
+        order = await SubOrder.findOne({
+          $or: [
+            { "paymentInfo.tx_ref": tx_ref },
+            { "paymentInfo.id": tx_ref },
+            { subOrderNumber: tx_ref },
+          ],
+        });
+      }
+
+      if (!order) {
+        return res.status(200).json({
+          success: false,
+          message: "No order found matching transaction reference",
+        });
       }
 
       res.status(200).json({
@@ -502,53 +626,78 @@ router.put(
         }).catch(() => {});
       }
 
+      // Real-time socket notification to customer
+      try {
+        const buyerId = order.user?._id || order.userRef;
+        if (buyerId) {
+          notifyUser(buyerId.toString(), "orderNotification", {
+            type: "ORDER_STATUS_CHANGED",
+            orderId: order._id,
+            status: order.status,
+            trackingCode,
+            deliveryProvider,
+            note,
+            updatedAt: new Date(),
+          });
+        }
+      } catch (e) {}
+
       res.status(200).json({
         success: true,
         order,
         message: `Order status updated to ${order.status}`,
       });
-    } catch (error) {
-      return next(new ErrorHandler(error.message, 500));
-    }
-  })
-);
 
-// 6. Customer Request Refund
-router.put(
-  "/order-refund/:id",
-  isAuthenticated,
-  catchAsyncErrors(async (req, res, next) => {
-    try {
-      let order = await SubOrder.findById(req.params.id);
-      if (!order) {
-        order = await Order.findById(req.params.id);
-      }
-
-      if (!order) {
-        return next(new ErrorHandler("Order not found with this id", 404));
-      }
-
-      order.status = "Processing refund";
-      if (!order.statusHistory) order.statusHistory = [];
-      order.statusHistory.push({
-        status: "Processing refund",
-        timestamp: new Date(),
-        note: req.body.reason || "Customer requested refund",
-        updatedBy: req.user?.name || "Customer",
-      });
-
-      await order.save({ validateBeforeSave: false });
-
-      res.status(200).json({
-        success: true,
+      // Asynchronously dispatch multi-channel notifications (In-App, Email, SMS)
+      eventBus.publish("ORDER_STATUS_UPDATED", {
         order,
-        message: "Order refund request submitted successfully!",
+        subOrder: isSubOrderMode ? subOrder : null,
+        newStatus: order.status,
+        previousStatus,
+        trackingCode,
+        deliveryProvider,
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
   })
 );
+
+// 6. Customer Request Refund (Accepts both PUT and POST for frontend flexibility)
+const handleOrderRefundRequest = catchAsyncErrors(async (req, res, next) => {
+  try {
+    let order = await SubOrder.findById(req.params.id);
+    if (!order) {
+      order = await Order.findById(req.params.id);
+    }
+
+    if (!order) {
+      return next(new ErrorHandler("Order not found with this id", 404));
+    }
+
+    order.status = "Processing refund";
+    if (!order.statusHistory) order.statusHistory = [];
+    order.statusHistory.push({
+      status: "Processing refund",
+      timestamp: new Date(),
+      note: req.body.reason || "Customer requested refund",
+      updatedBy: req.user?.name || "Customer",
+    });
+
+    await order.save({ validateBeforeSave: false });
+
+    res.status(200).json({
+      success: true,
+      order,
+      message: "Order refund request submitted successfully!",
+    });
+  } catch (error) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+});
+
+router.put("/order-refund/:id", isAuthenticated, handleOrderRefundRequest);
+router.post("/order-refund/:id", isAuthenticated, handleOrderRefundRequest);
 
 // 7. Merchant Approve Refund
 router.put(
@@ -738,6 +887,53 @@ const executeEscrowRelease = async (order, confirmedBy = "Customer", actor = nul
       description: `Platform fee on Order #${order.subOrderNumber || order.orderNumber}`,
     }).catch(() => {});
   }
+
+  // Trigger seller score recompute after delivery
+  try {
+    const SellerScore = require("../model/sellerScore");
+    if (targetShopId) {
+      await SellerScore.computeScore(targetShopId).catch(() => {});
+    }
+  } catch (e) {}
+
+  // Update customer buyerStats
+  try {
+    const User = require("../model/user");
+    const buyerId = order.customer || (order.user && (order.user._id || order.user.id)) || order.userRef;
+    if (buyerId) {
+      await User.findByIdAndUpdate(buyerId, {
+        $inc: { "buyerStats.completedOrders": 1 },
+      }).catch(() => {});
+    }
+  } catch (e) {}
+
+  // Award buyer loyalty cashback based on tier
+  try {
+    const Wallet = require("../model/wallet");
+    const buyerId = order.customer || (order.user && (order.user._id || order.user.id)) || order.userRef;
+    if (buyerId) {
+      let wallet = await Wallet.findOne({ user: buyerId });
+      if (wallet) {
+        const tierRates = { Bronze: 1, Silver: 2, Gold: 3, Platinum: 4, Diamond: 5 };
+        const rate = tierRates[wallet.loyaltyTier] || wallet.cashbackRate || 1;
+        const orderTotal = Number(order.subTotal || order.totalPrice || 0);
+        const cashbackAmount = Math.round((orderTotal * rate) / 100);
+        if (cashbackAmount > 0) {
+          wallet.balance += cashbackAmount;
+          wallet.totalCashbackEarned = (wallet.totalCashbackEarned || 0) + cashbackAmount;
+          wallet.transactions.push({
+            transactionType: "cashback",
+            amount: cashbackAmount,
+            orderId: order._id,
+            description: `${wallet.loyaltyTier} Tier ${rate}% Cashback for Order #${order.subOrderNumber || order.orderNumber}`,
+            status: "completed",
+            createdAt: new Date(),
+          });
+          await wallet.save();
+        }
+      }
+    }
+  } catch (e) {}
 
   await order.save({ validateBeforeSave: false });
 };
@@ -933,4 +1129,191 @@ router.post(
   })
 );
 
+// 14. Customer Extend Buyer Protection (AliExpress-Style Extension)
+router.post(
+  "/extend-buyer-protection/:id",
+  isAuthenticated,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { extensionDays = 15, reason } = req.body;
+
+      let order = await Order.findById(id);
+      if (!order) {
+        order = await SubOrder.findById(id);
+      }
+
+      if (!order) {
+        return next(new ErrorHandler("Order not found with this id", 404));
+      }
+
+      const daysToAdd = Math.min(Math.max(Number(extensionDays) || 15, 1), 30);
+      const currentEnd = order.buyerProtection?.protectionEndDate
+        ? new Date(order.buyerProtection.protectionEndDate)
+        : new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
+
+      const newEndDate = new Date(currentEnd.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+
+      order.buyerProtection = {
+        ...(order.buyerProtection || {}),
+        protectionStatus: "Extended",
+        protectionEndDate: newEndDate,
+        extensionRequested: true,
+        extensionDays: (order.buyerProtection?.extensionDays || 0) + daysToAdd,
+        extensionReason: reason || "Customer requested delivery window extension",
+      };
+
+      if (!order.statusHistory) order.statusHistory = [];
+      order.statusHistory.push({
+        status: order.status,
+        timestamp: new Date(),
+        note: `Buyer protection extended by ${daysToAdd} days to ${newEndDate.toLocaleDateString()}`,
+        updatedBy: req.user?.name || "Customer",
+      });
+
+      await order.save({ validateBeforeSave: false });
+
+      res.status(200).json({
+        success: true,
+        order,
+        message: `Buyer protection extended successfully by ${daysToAdd} days.`,
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// 15. Upload Tailoring Quality Inspection Proof (Pre-Shipment Artisan Audit)
+router.post(
+  "/upload-quality-inspection/:id",
+  isSeller,
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { inspectionPhotos = [], inspectionNotes } = req.body;
+
+      const subOrder = await SubOrder.findById(id);
+      if (!subOrder) {
+        return next(new ErrorHandler("Sub-order not found with this id", 404));
+      }
+
+      let uploadedLinks = [];
+      if (Array.isArray(inspectionPhotos)) {
+        for (const item of inspectionPhotos) {
+          if (typeof item === "string" && item.startsWith("data:image")) {
+            const upload = await cloudinary.v2.uploader.upload(item, {
+              folder: "quality_inspections",
+              width: 1200,
+            });
+            uploadedLinks.push({
+              public_id: upload.public_id,
+              url: upload.secure_url,
+            });
+          } else if (typeof item === "object" && item.url) {
+            uploadedLinks.push(item);
+          }
+        }
+      }
+
+      subOrder.qualityInspection = {
+        inspected: true,
+        inspectionPhotos: uploadedLinks,
+        inspectionNotes: inspectionNotes || "Garment checked for seam strength, embroidery, and tibeb patterns.",
+        inspectedAt: new Date(),
+      };
+
+      if (subOrder.status === "Tailoring & Handweaving" || subOrder.status === "Processing") {
+        subOrder.status = "Quality Checked";
+        if (!subOrder.milestones) subOrder.milestones = {};
+        subOrder.milestones.qualityCheckedAt = new Date();
+        subOrder.statusHistory.push({
+          status: "Quality Checked",
+          timestamp: new Date(),
+          note: "Artisan quality inspection verified with photographic proof.",
+          updatedBy: req.seller?.name || "Merchant",
+        });
+      }
+
+      await subOrder.save({ validateBeforeSave: false });
+
+      res.status(200).json({
+        success: true,
+        subOrder,
+        message: "Quality inspection saved successfully!",
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// 16. Comprehensive Real-Time Order Timeline & Trust Countdown
+router.get(
+  "/order-timeline/:id",
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      let order = await SubOrder.findById(id).populate("parentOrder shop");
+      if (!order) {
+        order = await Order.findById(id).populate("subOrders");
+      }
+
+      if (!order) {
+        return next(new ErrorHandler("Order not found with this id", 404));
+      }
+
+      const now = Date.now();
+      let slaCountdown = null;
+      if (order.sla) {
+        if (order.status === "Processing" && order.sla.mustConfirmBy) {
+          const diffMs = new Date(order.sla.mustConfirmBy).getTime() - now;
+          slaCountdown = {
+            phase: "confirmation",
+            targetDate: order.sla.mustConfirmBy,
+            hoursRemaining: Math.max(0, Math.round(diffMs / (1000 * 60 * 60))),
+            isOverdue: diffMs < 0,
+          };
+        } else if (["Confirmed", "Tailoring & Handweaving", "Quality Checked"].includes(order.status) && order.sla.mustShipBy) {
+          const diffMs = new Date(order.sla.mustShipBy).getTime() - now;
+          slaCountdown = {
+            phase: "shipping",
+            targetDate: order.sla.mustShipBy,
+            hoursRemaining: Math.max(0, Math.round(diffMs / (1000 * 60 * 60))),
+            isOverdue: diffMs < 0,
+          };
+        }
+      }
+
+      let buyerProtectionCountdown = null;
+      if (order.buyerProtection?.protectionEndDate) {
+        const diffMs = new Date(order.buyerProtection.protectionEndDate).getTime() - now;
+        buyerProtectionCountdown = {
+          endDate: order.buyerProtection.protectionEndDate,
+          daysRemaining: Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24))),
+          status: order.buyerProtection.protectionStatus || "Active",
+          moneyBackGuaranteed: order.buyerProtection.moneyBackGuaranteed !== false,
+        };
+      }
+
+      res.status(200).json({
+        success: true,
+        timeline: {
+          orderNumber: order.subOrderNumber || order.orderNumber,
+          currentStatus: order.status,
+          milestones: order.milestones || {},
+          statusHistory: order.statusHistory || [],
+          slaCountdown,
+          buyerProtectionCountdown,
+          deliveryVerification: order.deliveryVerification || {},
+          qualityInspection: order.qualityInspection || {},
+        },
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+router.executeEscrowRelease = executeEscrowRelease;
 module.exports = router;

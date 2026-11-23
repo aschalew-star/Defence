@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+const { signAuthToken } = require("../config/jwt");
 
 const shopSchema = new mongoose.Schema(
   {
@@ -84,6 +84,26 @@ const shopSchema = new mongoose.Schema(
     },
 
     // Ethiopian Merchant Identity, Tax & Regulatory KYC
+    legalOwnerName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    legalBusinessName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    idType: {
+      type: String,
+      enum: ["Kebele ID", "National Digital ID (Fayda)", "Passport", "Driver License"],
+      default: "Kebele ID",
+    },
+    idNumber: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     tinNumber: {
       type: String,
       default: "",
@@ -101,6 +121,46 @@ const shopSchema = new mongoose.Schema(
     vatNumber: {
       type: String,
       default: "",
+    },
+    totRegistered: {
+      type: Boolean,
+      default: false,
+    },
+    taxOffice: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    subCity: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    woreda: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    landmark: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    artisanLineage: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    rejectionReason: {
+      type: String,
+      default: "",
+    },
+    verifiedAt: {
+      type: Date,
+    },
+    verifiedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
     businessLicense: {
       public_id: { type: String },
@@ -199,6 +259,41 @@ const shopSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    // AliExpress-Grade Store Experience:
+    vacationMode: {
+      isActive: { type: Boolean, default: false },
+      message: { type: String, default: "Our artisan workshop is taking a brief cultural holiday. Orders will be processed upon our return!" },
+      returnDate: { type: Date, default: null },
+    },
+    followersCount: {
+      type: Number,
+      default: 0,
+      min: [0, "Followers cannot be negative"],
+    },
+    bundleDeals: [
+      {
+        title: { type: String, default: "Complete Traditional Ensemble" },
+        description: { type: String, default: "Buy together and save on authentic artisan accessories" },
+        products: [
+          {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Product",
+          },
+        ],
+        discountPercentage: {
+          type: Number,
+          default: 15, // 15% bundle savings
+        },
+        isActive: {
+          type: Boolean,
+          default: true,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
 
     // Multi-User Staff & Role Management per Store
     staffMembers: [
@@ -325,11 +420,96 @@ const shopSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+
+    // AliExpress-Grade Merchant Performance & Badging
+    sellerTier: {
+      type: String,
+      enum: ["Standard Artisan", "Verified Guild", "Gold Merchant", "Top Rated Master Artisan"],
+      default: "Standard Artisan",
+      index: true,
+    },
+
+    // Formal seller score reference
+    sellerScore: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "SellerScore",
+    },
+
+    // Response guarantee (AliExpress shows this on storefront)
+    responseGuarantee: {
+      avgResponseHours: { type: Number, default: 24 },
+      responseRate: { type: Number, default: 100, min: 0, max: 100 },
+      guaranteedReplyIn: { type: Number, default: 48 },
+    },
+
+    // Structured return policy (replaces the plain string returnPolicy)
+    structuredReturnPolicy: {
+      acceptsReturns: { type: Boolean, default: true },
+      returnWindowDays: { type: Number, default: 15 },
+      returnShippingPaidBy: {
+        type: String,
+        enum: ["buyer", "seller", "platform"],
+        default: "buyer",
+      },
+      conditions: [
+        {
+          type: String,
+          enum: [
+            "Unused and in original packaging",
+            "Sizing discrepancy on custom tailoring",
+            "Defective or damaged item",
+            "Item not as described",
+          ],
+        },
+      ],
+      restockingFee: { type: Number, default: 0, min: 0, max: 100 },
+    },
+
+    // Seller agreement & compliance
+    sellerAgreement: {
+      agreedToTerms: { type: Boolean, default: false },
+      agreedAt: { type: Date },
+      agreedVersion: { type: String, default: "1.0" },
+      antiCounterfeitPledge: { type: Boolean, default: false },
+    },
+
+    // Store specialties (what this shop is known for)
+    specialties: [
+      {
+        type: String,
+        enum: [
+          "Habesha Kemis",
+          "Tibeb Weaving",
+          "Netela/Gabi",
+          "Ethiopian Jewelry",
+          "Traditional Accessories",
+          "Modern Ethiopian Fashion",
+          "Wedding Attire",
+          "Cultural Costumes",
+          "Home Textiles",
+        ],
+      },
+    ],
+
+    fulfillmentRate: {
+      type: Number, // percentage, e.g. 99.2
+      default: 100,
+    },
+    averageDispatchHours: {
+      type: Number,
+      default: 24,
+    },
     resetPasswordToken: String,
     resetPasswordTime: Date,
   },
   { timestamps: true }
 );
+
+// High-performance production compound indexes
+shopSchema.index({ isVerified: 1, ratings: -1 });
+shopSchema.index({ businessType: 1, isVerified: 1 });
+shopSchema.index({ city: 1, isVerified: 1 });
+shopSchema.index({ "vacationMode.isActive": 1 });
 
 // Auto-generate URL friendly slug before save if not present
 shopSchema.pre("save", async function (next) {
@@ -352,9 +532,7 @@ shopSchema.methods.comparePassword = async function (enteredPassword) {
 
 // Generate JWT token
 shopSchema.methods.getJwtToken = function () {
-  return jwt.sign({ id: this._id }, process.env.JWT_SECRET || "Secret", {
-    expiresIn: process.env.JWT_EXPIRES || "90d",
-  });
+  return signAuthToken(this._id);
 };
 
 module.exports = mongoose.model("Shop", shopSchema);

@@ -1,26 +1,48 @@
+const path = require("path");
 require("dotenv").config();
+require("dotenv").config({ path: path.join(__dirname, ".env") });
+require("dotenv").config({ path: path.join(__dirname, "config", ".env") });
+
+const { getJwtSecret } = require("./config/jwt");
+getJwtSecret();
 const cors = require("cors");
 const express = require("express");
 const connect = require("./db/Database");
+const mongoose = require("mongoose");
 const cookie = require("cookie-parser");
 const cloudinary = require("cloudinary");
+const compression = require("compression");
+const helmet = require("helmet");
+const mongoSanitize = require("express-mongo-sanitize");
+const hpp = require("hpp");
 const errorHandler = require("./middleware/error");
 
-// Controllers / Routers
-const user = require("./control/user");
-const shop = require("./control/shop");
-const order = require("./control/order");
-const product = require("./control/product");
-const payment = require("./control/payment");
-const event = require("./control/Event");
-const message = require("./control/Message");
-const conversation = require("./control/Conversation");
-const withdraw = require("./control/withdraw");
-const category = require("./control/category");
-const review = require("./control/review");
-const coupon = require("./control/coupon");
-const dispute = require("./control/dispute");
-const platform = require("./control/platform");
+// Controllers / Routers (Centralized)
+const {
+  user,
+  shop,
+  order,
+  product,
+  payment,
+  event,
+  message,
+  conversation,
+  withdraw,
+  category,
+  review,
+  coupon,
+  dispute,
+  platform,
+  wallet,
+  notification,
+  qa,
+  returnCtrl,
+  sellerScore,
+  wishlist,
+  cart,
+  promotion,
+} = require("./controllers");
+const { initSocket } = require("./socket");
 
 // Handle uncaught exceptions early
 process.on("uncaughtException", (err) => {
@@ -29,19 +51,32 @@ process.on("uncaughtException", (err) => {
 });
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = Number(process.env.PORT || 5000);
 
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: false,
+  })
+);
+app.use(compression());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use(mongoSanitize());
+app.use(hpp());
 
-// Dynamic allowed origins for CORS
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:8081",
-  "https://297c-213-55-102-49.ngrok-free.app",
-];
-if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL.replace(/\/$/, ""));
+const configuredOrigins = (process.env.FRONTEND_URL || "")
+  .split(",")
+  .map((origin) => origin.trim().replace(/\/$/, ""))
+  .filter(Boolean);
+const allowedOrigins = new Set(configuredOrigins);
+
+if (process.env.NODE_ENV !== "production") {
+  ["http://localhost:3000", "http://localhost:8081"].forEach((origin) =>
+    allowedOrigins.add(origin)
+  );
+} else if (allowedOrigins.size === 0) {
+  throw new Error("FRONTEND_URL must contain the allowed production frontend origin(s).");
 }
 
 app.use(
@@ -49,15 +84,15 @@ app.use(
     origin: (origin, callback) => {
       // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
+      const normalized = origin.trim().replace(/\/+$/, "");
       if (
-        allowedOrigins.indexOf(origin) !== -1 ||
-        origin.includes("localhost") ||
-        origin.includes("ngrok")
+        allowedOrigins.has(normalized) ||
+        allowedOrigins.has(normalized.replace(/^https?:\/\/www\./, "https://")) ||
+        allowedOrigins.has(normalized.replace(/^https?:\/\//, "https://www."))
       ) {
-        callback(null, true);
-      } else {
-        callback(null, true); // Allow configured origins
+        return callback(null, true);
       }
+      return callback(new Error(`Origin ${origin} is not allowed by CORS`));
     },
     credentials: true,
   })
@@ -65,21 +100,20 @@ app.use(
 
 app.use(cookie());
 
-// Initialize Database Connection
-connect();
-
 // Configure Cloudinary
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_NAME || "dll1pjjbm",
-  api_key: process.env.CLOUDINARY_API_KEY || "436377263181225",
-  api_secret: process.env.CLOUDINARY_API_SECRET || "y53nJ5-e01HR93f2CmcFHKO3lb4",
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 // Health check endpoint
 app.get("/health", (req, res) => {
-  res.status(200).json({
-    status: "ok",
-    version: "3.2.0",
+  const databaseReady = mongoose.connection.readyState === 1;
+  res.status(databaseReady ? 200 : 503).json({
+    status: databaseReady ? "ok" : "unavailable",
+    database: databaseReady ? "connected" : "disconnected",
+    version: "4.0.0",
     service: "MEP Ethiopian Multi-Merchant Marketplace API",
     features: [
       "Multi-Vendor Escrow & Settlement",
@@ -87,6 +121,11 @@ app.get("/health", (req, res) => {
       "Per-Merchant Inventory & Tax Verification (KYC)",
       "Chapa Payment Gateway (Telebirr/CBE)",
       "Coupons, Disputes, and Reviews",
+      "Buyer Protection & Money-Back Guarantee",
+      "Seller Trust Score & Leaderboard",
+      "Server-Side Cart & Wishlist",
+      "Return & Refund Management",
+      "Store Promotions & Campaigns",
     ],
     timestamp: new Date(),
   });
@@ -96,61 +135,166 @@ app.get("/", (req, res) => {
   res.send("MEP Ethiopian Traditional Multi-Merchant Marketplace API Server is running!");
 });
 
-// Mount Routes
-app.use("/user", user);
-app.use("/shop", shop);
-app.use("/product", product);
-app.use("/order", order);
-app.use("/payment", payment);
-app.use("/withdraw", withdraw);
-app.use("/event", event);
-app.use("/message", message);
-app.use("/conversation", conversation);
-app.use("/category", category);
-app.use("/review", review);
-app.use("/coupon", coupon);
-app.use("/dispute", dispute);
-app.use("/platform", platform);
+// Mount Routes (Dual-mount root /resource and /api/v2/resource for seamless compatibility)
+const routeMap = [
+  ["/user", user],
+  ["/shop", shop],
+  ["/product", product],
+  ["/order", order],
+  ["/payment", payment],
+  ["/withdraw", withdraw],
+  ["/event", event],
+  ["/message", message],
+  ["/conversation", conversation],
+  ["/category", category],
+  ["/review", review],
+  ["/coupon", coupon],
+  ["/dispute", dispute],
+  ["/platform", platform],
+  ["/wallet", wallet],
+  ["/notification", notification],
+  ["/qa", qa],
+  ["/return", returnCtrl],
+  ["/seller-score", sellerScore],
+  ["/wishlist", wishlist],
+  ["/cart", cart],
+  ["/promotion", promotion],
+];
+
+routeMap.forEach(([path, routerInstance]) => {
+  app.use(path, routerInstance);
+  app.use(`/api/v2${path}`, routerInstance);
+});
 
 // Central Error Handling Middleware
 app.use(errorHandler);
 
-const server = app.listen(port, (err) => {
-  if (err) {
-    console.error("Error starting server:", err);
-  } else {
-    console.log(`🚀 MEP Marketplace Server listening on port ${port}`);
+let server;
+let inspectionInterval;
 
-    // Auto-release orders past the 72-hour customer inspection window (Every 30 minutes)
+const startServer = async () => {
+  await connect();
+  return new Promise((resolve, reject) => {
+    const httpServer = app.listen(port, () => resolve(httpServer));
+    httpServer.once("error", reject);
+  });
+};
+
+startServer()
+  .then((httpServer) => {
+    server = httpServer;
+    console.log(`MEP Marketplace Server listening on port ${port}`);
+
+    // Initialize unified real-time Socket.io engine
+    const origins = Array.from(allowedOrigins);
+    initSocket(httpServer, origins);
+    console.log(`⚡ Real-time Socket.io engine merged into backend on port ${port}`);
+
+    // Initialize Event-Driven Multi-Channel Notification Engine (Email, SMS, In-App Socket.io)
+    require("./services/notificationService");
+    console.log("🔔 Event-driven notification engine initialized and listening to event bus");
+
     const SubOrder = require("./model/SubOrder");
-    const axios = require("axios");
-    setInterval(async () => {
+    const Return = require("./model/return");
+    inspectionInterval = setInterval(async () => {
+      // 1. Process expired 72-hour customer inspections (Direct in-process escrow release)
       try {
-        const count = await SubOrder.countDocuments({
+        const expiredSubOrders = await SubOrder.find({
           status: "Delivered - Pending Inspection",
           "deliveryVerification.inspectionWindowEndsAt": { $lte: new Date() },
           "financials.payoutStatus": "Inspection Period",
         });
-        if (count > 0) {
-          console.log(`⏰ Background Check: Auto-releasing ${count} order(s) past 72h inspection window.`);
-          await axios.post(`http://localhost:${port}/order/process-expired-inspections`).catch(() => {});
+        if (expiredSubOrders.length > 0) {
+          console.log(`[Auto-Escrow] Releasing ${expiredSubOrders.length} order(s) past 72h inspection window.`);
+          for (const ord of expiredSubOrders) {
+            if (order && order.executeEscrowRelease) {
+              await order.executeEscrowRelease(ord, "Auto-Release (72h SLA Elapsed)", { name: "System Automation" });
+            }
+          }
         }
       } catch (err) {
-        // silent background catch
+        console.error("Expired-order processing failed:", err.message);
+      }
+
+      // 2. Auto-approve returns past seller response deadline (Direct in-process)
+      try {
+        const expiredReturns = await Return.find({
+          status: "Requested",
+          $or: [
+            { autoApproveAt: { $lte: new Date() } },
+            { "timeline.requestedAt": { $lte: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) } },
+          ],
+        });
+        if (expiredReturns.length > 0) {
+          console.log(`[Auto-Return] Auto-approving ${expiredReturns.length} overdue return(s).`);
+          for (const ret of expiredReturns) {
+            ret.status = "Seller Approved";
+            ret.sellerResponse = {
+              accepted: true,
+              reason: "Auto-approved (seller did not respond within 3-day SLA)",
+              respondedAt: new Date(),
+            };
+            ret.messages.push({
+              sender: "System",
+              message: "Return auto-approved because seller did not respond within the 3-day SLA.",
+              createdAt: new Date(),
+            });
+            await ret.save();
+          }
+        }
+      } catch (err) {
+        console.error("Return auto-approval processing failed:", err.message);
+      }
+
+      // 3. Check for SLA overdue sub-orders
+      try {
+        const overdueFilter = {
+          status: { $in: ["Processing", "Confirmed"] },
+          "sla.isOverdue": false,
+          $or: [
+            { "sla.mustConfirmBy": { $lte: new Date() }, status: "Processing" },
+            { "sla.mustShipBy": { $lte: new Date() }, status: "Confirmed" },
+          ],
+        };
+        const overdueCount = await SubOrder.countDocuments(overdueFilter);
+        if (overdueCount > 0) {
+          await SubOrder.updateMany(overdueFilter, { $set: { "sla.isOverdue": true } });
+          console.log(`[SLA Alert] Marked ${overdueCount} sub-order(s) as overdue.`);
+        }
+      } catch (err) {
+        console.error("SLA overdue check failed:", err.message);
       }
     }, 30 * 60 * 1000);
-  }
-});
+  })
+  .catch((err) => {
+    console.error("Backend startup failed:", err.message);
+    process.exit(1);
+  });
 
 // Graceful Shutdown
 const shutdown = (signal) => {
-  console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
-  server.close(() => {
-    console.log("HTTP server closed.");
-    const mongoose = require("mongoose");
+  console.log(`Received ${signal}. Starting graceful shutdown...`);
+  if (inspectionInterval) clearInterval(inspectionInterval);
+
+  const closeDatabase = () =>
     mongoose.connection.close(false).then(() => {
       console.log("MongoDB connection closed.");
       process.exit(0);
+    });
+
+  if (!server) {
+    closeDatabase().catch((err) => {
+      console.error("MongoDB shutdown failed:", err.message);
+      process.exit(1);
+    });
+    return;
+  }
+
+  server.close(() => {
+    console.log("HTTP server closed.");
+    closeDatabase().catch((err) => {
+      console.error("MongoDB shutdown failed:", err.message);
+      process.exit(1);
     });
   });
 
@@ -167,9 +311,13 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 // Handle unhandled promise rejections
 process.on("unhandledRejection", (err) => {
   console.error("💥 Unhandled Rejection:", err.message, err.stack);
-  server.close(() => {
+  if (!server) {
     process.exit(1);
-  });
+  } else {
+    server.close(() => {
+      process.exit(1);
+    });
+  }
 });
 
 module.exports = app;

@@ -7,6 +7,7 @@ const Shop = require("../model/Shop");
 const Category = require("../model/category");
 const cloudinary = require("cloudinary");
 const ErrorHandler = require("../utils/handleerror");
+const eventBus = require("../services/eventBus");
 
 // 1. Create Product (Merchant)
 router.post(
@@ -119,6 +120,9 @@ router.post(
 
       const product = await Product.create(productData);
 
+      // Publish non-blocking event to notify merchant followers (In-App, Email, SMS based on preferences)
+      eventBus.publish("PRODUCT_CREATED", { product, shop });
+
       res.status(201).json({
         success: true,
         product,
@@ -162,6 +166,12 @@ router.get(
         query.category = { $regex: category, $options: "i" };
       }
 
+      // Flash deals filter (AliExpress Countdown Deals)
+      if (req.query.flashSale === "true" || req.query.flashSale === true) {
+        query["flashSale.isActive"] = true;
+        query["flashSale.endTime"] = { $gt: new Date() };
+      }
+
       // Price range filter
       if (minPrice || maxPrice) {
         query.discountPrice = {};
@@ -199,6 +209,7 @@ router.get(
         Product.countDocuments(query),
       ]);
 
+      res.set("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
       res.status(200).json({
         success: true,
         products,
@@ -232,9 +243,9 @@ router.get(
   })
 );
 
-// 4. Get Single Product Details
+// 4. Get Single Product Details (with Views Increment & AliExpress Trust Signals)
 router.get(
-  "/product/:id",
+  ["/product/:id", "/get-product/:id", "/:id"],
   catchAsyncErrors(async (req, res, next) => {
     try {
       const product = await Product.findById(req.params.id).populate("shopRef");
@@ -243,9 +254,37 @@ router.get(
         return next(new ErrorHandler("Product not found with this id", 404));
       }
 
+      // Atomically increment 30-day views
+      await Product.findByIdAndUpdate(req.params.id, {
+        $inc: { "confidenceSignals.viewsLast30Days": 1 },
+      }).catch(() => {});
+
+      // Fetch shop's trust signals and seller score
+      let sellerScore = null;
+      try {
+        const SellerScore = require("../model/sellerScore");
+        const shopId = product.shopId || (product.shopRef && product.shopRef._id);
+        if (shopId) {
+          sellerScore = await SellerScore.findOne({ shop: shopId });
+        }
+      } catch (e) {}
+
       res.status(200).json({
         success: true,
         product,
+        sellerScore: sellerScore || null,
+        trustSignals: {
+          totalSold: product.confidenceSignals?.totalSold || product.sold_out || 0,
+          totalWishlistCount: product.confidenceSignals?.totalWishlistCount || 0,
+          viewsLast30Days: (product.confidenceSignals?.viewsLast30Days || 0) + 1,
+          authenticity: product.authenticity || { isHandmade: true, isCertifiedArtisan: false },
+          buyerProtection: product.buyerProtection || { returnWindowDays: 15, moneyBackGuaranteed: true },
+          sizeGuide: product.sizeGuide || null,
+          videos: product.videos || [],
+          shippingTiers: product.shippingTiers || [],
+          bulkPricing: product.bulkPricing || [],
+          trustBadge: sellerScore?.trustBadge || (product.shopRef && product.shopRef.badge) || "Bronze Artisan",
+        },
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -420,6 +459,20 @@ router.put(
       // Recalculate average
       await Review.calculateProductRating(productId);
 
+      // Mark product as reviewed in customer order snapshot if orderId provided
+      if (req.body.orderId) {
+        try {
+          const Order = require("../model/Order");
+          await Order.findByIdAndUpdate(
+            req.body.orderId,
+            { $set: { "cart.$[elem].isReviewed": true } },
+            { arrayFilters: [{ $or: [{ "elem._id": productId }, { "elem.id": productId }] }] }
+          );
+        } catch (err) {
+          // Non-blocking
+        }
+      }
+
       const updatedProduct = await Product.findById(productId);
 
       res.status(200).json({
@@ -474,6 +527,72 @@ router.put(
         success: true,
         product,
         message: `Product marked as ${product.approvalStatus}`,
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// 10. Trending Ethiopian Traditional Crafts (AliExpress Explore Feed)
+router.get(
+  "/trending-crafts",
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const trendingProducts = await Product.find({ status: "active" })
+        .sort({ "confidenceSignals.viewsLast30Days": -1, sold_out: -1, ratings: -1 })
+        .limit(12)
+        .populate("shopRef", "name badge isVerified");
+
+      res.status(200).json({
+        success: true,
+        trending: trendingProducts,
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  })
+);
+
+// 11. Search Autocomplete Suggestions for Habesha Crafts
+router.get(
+  "/search-suggestions",
+  catchAsyncErrors(async (req, res, next) => {
+    try {
+      const { q } = req.query;
+      if (!q || q.trim().length === 0) {
+        return res.status(200).json({
+          success: true,
+          suggestions: [
+            "Habesha Kemis",
+            "Menzo Gabi",
+            "Gold Tibeb Dress",
+            "Silver Cross Necklace",
+            "Traditional Netela",
+            "Oromo Cultural Attire",
+            "Tigray Tilfi Dress",
+          ],
+        });
+      }
+
+      const products = await Product.find({
+        status: "active",
+        name: { $regex: q.trim(), $options: "i" },
+      })
+        .select("name category discountPrice featuredImage images")
+        .limit(8);
+
+      const suggestions = products.map((p) => ({
+        id: p._id,
+        name: p.name,
+        category: p.category,
+        price: p.discountPrice,
+        image: p.featuredImage?.url || p.images?.[0]?.url || "",
+      }));
+
+      res.status(200).json({
+        success: true,
+        suggestions,
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));

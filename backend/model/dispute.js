@@ -100,6 +100,36 @@ const disputeSchema = new mongoose.Schema(
       decidedAt: { type: Date },
       decidedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     },
+
+    // === AliExpress-Grade Escalation & Auto-Resolution ===
+
+    // Escalation levels (seller → platform → senior arbitration)
+    escalationLevel: {
+      type: String,
+      enum: ["Seller Level", "Platform Review", "Senior Arbitration"],
+      default: "Seller Level",
+    },
+
+    // Deadlines with auto-resolution
+    deadlines: {
+      sellerMustRespondBy: { type: Date },
+      buyerMustReplyBy: { type: Date },
+      platformDecisionBy: { type: Date },
+      autoResolutionAt: { type: Date },
+    },
+
+    // Post-resolution satisfaction survey
+    postResolutionSurvey: {
+      satisfied: { type: Boolean },
+      feedback: { type: String, default: "" },
+      submittedAt: { type: Date },
+    },
+
+    // Linked return (if dispute results in return)
+    linkedReturn: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Return",
+    },
   },
   { timestamps: true }
 );

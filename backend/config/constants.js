@@ -48,11 +48,13 @@ const DISPUTE_REASONS = [
 
 const getCookieOptions = () => {
   const isProd = process.env.NODE_ENV === "production";
+  const sameSite = process.env.COOKIE_SAME_SITE || (isProd ? "none" : "lax");
+  const secure = isProd ? process.env.COOKIE_SECURE !== "false" : false;
   return {
     expires: new Date(Date.now() + JWT_COOKIE_EXPIRE_DAYS * 24 * 60 * 60 * 1000),
     httpOnly: true,
-    sameSite: isProd ? "none" : "lax",
-    secure: isProd,
+    sameSite,
+    secure,
   };
 };
 
