@@ -14,6 +14,7 @@ import { RxCross1, RxReload } from "react-icons/rx";
 import { FiSearch } from "react-icons/fi";
 
 import { useMerchantCoupons, HOLIDAY_PRESETS } from "../../hooks";
+import { CouponDiscountType } from "../../types";
 
 const ShopCoupons: React.FC = () => {
   const {
