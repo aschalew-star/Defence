@@ -142,10 +142,10 @@ const ShopAllEvents: React.FC = () => {
   }, [activeEvents, now]);
 
   // Unique categories
-  const categories = useMemo(() => {
-    const set = new Set();
+  const categories = useMemo<string[]>(() => {
+    const set = new Set<string>();
     (activeEvents || []).forEach((e) => {
-      if (e.category) set.add(e.category);
+      if (e.category) set.add(String(e.category));
     });
     return Array.from(set);
   }, [activeEvents]);

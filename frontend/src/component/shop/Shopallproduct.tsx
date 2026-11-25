@@ -59,8 +59,8 @@ const Shopallproduct: React.FC = () => {
   } = useMerchantProducts();
   const dispatch = useAppDispatch();
 
-  const categories = useMemo(
-    () => Array.from(new Set(products.map((p) => p.category).filter(Boolean))),
+  const categories = useMemo<string[]>(
+    () => Array.from(new Set(products.map((p) => String(p.category || "")).filter(Boolean))),
     [products]
   );
 
