@@ -15,7 +15,7 @@ import {
   BsPlusCircle,
   BsImage,
 } from "react-icons/bs";
-import { FiExternalLink, FiUploadCloud } from "react-icons/fi";
+import { FiUploadCloud } from "react-icons/fi";
 import { RxCross1, RxReload } from "react-icons/rx";
 
 interface IClaim {
@@ -188,7 +188,7 @@ const UserResolutionCenter: React.FC = () => {
     if (!selectedClaim || !replyText.trim()) return;
     setSendingReply(true);
     try {
-      const res = await axios.post(
+      await axios.post(
         `${server}/dispute/add-message/${selectedClaim._id}`,
         { message: replyText.trim() },
         { withCredentials: true }
