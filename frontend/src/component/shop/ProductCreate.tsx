@@ -719,7 +719,7 @@ const CreateProduct: React.FC = () => {
                 type="number"
                 min="1"
                 value={productionTime}
-                onChange={(e) => setProductionTime(e.target.value)}
+                onChange={(e) => setProductionTime(Number(e.target.value))}
                 placeholder="e.g. 5"
                 className="w-full px-4 py-2.5 rounded-xl border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
               />
