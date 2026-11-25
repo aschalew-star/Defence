@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { toast } from "react-toastify";
 import { useAppDispatch, useAppSelector } from "./index";
 import { addToWishlist, removeFromwish } from "../redux/Action/Wishlist";
@@ -17,7 +17,7 @@ export const useWishlistLogic = (): UseWishlistLogicReturn => {
   const dispatch = useAppDispatch();
   const { wish } = useAppSelector((state) => state.Wish);
 
-  const wishList = wish || [];
+  const wishList = useMemo(() => wish || [], [wish]);
 
   const isInWish = useCallback(
     (id: string) => {
