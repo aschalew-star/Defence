@@ -349,7 +349,7 @@ const ShopCoupons: React.FC = () => {
                   </label>
                   <select
                     value={discountType}
-                    onChange={(e) => setDiscountType(e.target.value)}
+                    onChange={(e) => setDiscountType(e.target.value as CouponDiscountType)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                   >
                     <option value="percentage">Percentage (%)</option>
