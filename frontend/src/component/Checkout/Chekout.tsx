@@ -107,7 +107,7 @@ const Chekout: React.FC = () => {
                       setAddress2(item.address2 || "");
                       setCity(item.city || "Addis Ababa");
                       setCountry(item.country || "Ethiopia");
-                      setZipCode(item.zipCode || "1000");
+                      setZipCode(String(item.zipCode ?? "1000"));
                       if (item.subCity) setSubCity(item.subCity);
                     }}
                     className={`p-3 text-left rounded-2xl border text-xs transition ${

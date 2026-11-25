@@ -70,7 +70,7 @@ const ShopSettings: React.FC = () => {
   const [businessType, setBusinessType] = useState(effectiveSeller?.businessType || "Individual Artisan");
   const [phoneNumber, setPhoneNumber] = useState(effectiveSeller?.phoneNumber || "");
   const [address, setAddress] = useState(effectiveSeller?.address || "");
-  const [zipCode, setZipCode] = useState(effectiveSeller?.zipCode || "1000");
+  const [zipCode, setZipCode] = useState(String(effectiveSeller?.zipCode ?? "1000"));
   const [craftSpecialization, setCraftSpecialization] = useState(effectiveSeller?.craftSpecialization || []);
   const [avatarPreview, setAvatarPreview] = useState(effectiveSeller?.avatar?.url || "");
   const [avatarFile, setAvatarFile] = useState(null);
@@ -122,7 +122,7 @@ const ShopSettings: React.FC = () => {
     setBusinessType(s.businessType || "Individual Artisan");
     setPhoneNumber(s.phoneNumber || "");
     setAddress(s.address || "");
-    setZipCode(s.zipCode || "1000");
+    setZipCode(String(s.zipCode ?? "1000"));
     setAvatarPreview(s.avatar?.url || "");
     setTinNumber(s.tinNumber || "");
     setBusinessReg(s.businessRegistrationNumber || "");

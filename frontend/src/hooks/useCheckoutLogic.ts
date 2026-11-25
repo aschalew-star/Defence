@@ -91,7 +91,7 @@ export const useCheckoutLogic = () => {
       setAddress2(defaultAddr.address2 || "");
       setCountry(defaultAddr.country || "Ethiopia");
       setCity(defaultAddr.city || "Addis Ababa");
-      setZipCode(defaultAddr.zipCode || "1000");
+      setZipCode(String(defaultAddr.zipCode ?? "1000"));
     }
   }, [user]);
 
