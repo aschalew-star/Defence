@@ -83,7 +83,7 @@ export const useCheckoutLogic = () => {
   // Autofill user shipping if exists
   useEffect(() => {
     if (user?.phoneNumber) {
-      setPhoneNumber(user.phoneNumber);
+      setPhoneNumber(String(user.phoneNumber));
     }
     if (user?.addresses && user.addresses.length > 0) {
       const defaultAddr = user.addresses[0];

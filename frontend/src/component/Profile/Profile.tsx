@@ -82,7 +82,7 @@ function Profile() {
     if (user) {
       setName(user.name || "");
       setEmail(user.email || "");
-      setPhoneNumber(user.phoneNumber || "");
+      setPhoneNumber(String(user.phoneNumber ?? ""));
       if (user.customMeasurements) {
         setBust(user.customMeasurements.bust || "");
         setWaist(user.customMeasurements.waist || "");
