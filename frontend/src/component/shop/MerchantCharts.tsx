@@ -227,7 +227,7 @@ export const RevenueTrendChart: React.FC<RevenueTrendChartProps> = ({ orders = [
 
           {/* Timeframe Selector */}
           <div className="bg-stone-100 p-1 rounded-xl flex items-center text-xs font-semibold">
-            {["7d", "14d", "30d"].map((range) => (
+            {(["7d", "14d", "30d"] as const).map((range) => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
