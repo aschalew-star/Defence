@@ -14,7 +14,7 @@ import LanguageSwitcher from "./LanguageSwitcher";
 
 export interface NavbarProps {
   active?: number;
-  show?: boolean;
+  show?: boolean | number;
 }
 
 const Navbar: FC<NavbarProps> = ({ active, show }) => {
