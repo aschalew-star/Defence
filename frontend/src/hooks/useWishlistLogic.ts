@@ -3,7 +3,6 @@ import { toast } from "react-toastify";
 import { useAppDispatch, useAppSelector } from "./index";
 import { addToWishlist, removeFromwish } from "../redux/Action/Wishlist";
 import { addTocart } from "../redux/Action/cartAction";
-import { IProduct } from "../types";
 
 export interface UseWishlistLogicReturn {
   wish: any[];

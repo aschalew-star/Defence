@@ -6,18 +6,14 @@ import AdminNavbar from "../../component/Admin/AdminNavbar";
 import Adminsidebar from "../../component/Admin/Adminheader";
 import {
   BsBoxSeam,
-  BsShieldCheck,
-  BsClockHistory,
   BsCheckCircleFill,
-  BsArrowRepeat,
-  BsCashCoin,
 } from "react-icons/bs";
 import { RxCross1, RxReload } from "react-icons/rx";
 
 const AdminReturnsPage: React.FC = () => {
   const [returns, setReturns] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter] = useState<string>("all");
   const [selectedReturn, setSelectedReturn] = useState<any | null>(null);
 
   // Arbitration decision modal

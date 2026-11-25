@@ -4,16 +4,13 @@ import { server } from "../server";
 import { toast } from "react-toastify";
 import Navbar from "../component/Layout/Navbar";
 import Footer from "../component/Layout/Footer";
-import { useCurrency } from "../hooks";
 import {
   BsCoin,
   BsWallet2,
-  BsGift,
   BsShare,
   BsCheckCircleFill,
   BsArrowUpRight,
   BsArrowDownLeft,
-  BsShieldCheck,
   BsLightningCharge,
   BsTrophy,
 } from "react-icons/bs";
@@ -21,7 +18,6 @@ import { FiCopy, FiCheck, FiSend } from "react-icons/fi";
 import { RxCross1, RxReload } from "react-icons/rx";
 
 const RewardsPage: React.FC = () => {
-  const { formatPrice } = useCurrency();
   const [wallet, setWallet] = useState<any | null>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);

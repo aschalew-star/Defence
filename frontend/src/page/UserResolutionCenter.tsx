@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import axios from "axios";
 import { server } from "../server";
 import { toast } from "react-toastify";
@@ -8,12 +7,9 @@ import Footer from "../component/Layout/Footer";
 import {
   BsShieldCheck,
   BsShieldExclamation,
-  BsClockHistory,
   BsCheckCircleFill,
-  BsChatDots,
   BsBoxSeam,
   BsPlusCircle,
-  BsImage,
 } from "react-icons/bs";
 import { FiUploadCloud } from "react-icons/fi";
 import { RxCross1, RxReload } from "react-icons/rx";
