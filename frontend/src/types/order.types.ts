@@ -127,6 +127,13 @@ export interface IOrder {
   cart: ICartItem[];
   shippingAddress: IOrderShippingAddress;
   user: IUser;
+  userData?: {
+    _id?: string;
+    name?: string;
+    email?: string;
+    phoneNumber?: string | number;
+    avatar?: any;
+  };
   totalPrice: number;
   subTotal?: number;
   shipping?: number;
